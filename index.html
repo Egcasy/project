@@ -1,31 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visual Studio Code - Web</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Marked for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Prettier for Formatting -->
+    <script src="https://unpkg.com/prettier@2.3.2/standalone.js"></script>
+    <script src="https://unpkg.com/prettier@2.3.2/parser-babel.js"></script>
+    <script src="https://unpkg.com/prettier@2.3.2/parser-html.js"></script>
+    <script src="https://unpkg.com/prettier@2.3.2/parser-postcss.js"></script>
+
+    <!-- Split.js for Draggable Panels -->
+    <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
+
+    <!-- Monaco Vim -->
+    <script src="https://unpkg.com/monaco-vim/dist/monaco-vim.min.js"></script>
+
+    <!-- JSZip for Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
     
+    <!-- Pyodide for Python -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+
+    <!-- xterm.js for Terminal -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
     <style>
         /* Exact VS Code Scrollbars */
         ::-webkit-scrollbar {
             width: 10px;
             height: 10px;
         }
+
         ::-webkit-scrollbar-track {
             background: transparent;
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(121, 121, 121, 0.4);
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(100, 100, 100, 0.7);
         }
+
         ::-webkit-scrollbar-corner {
             background: transparent;
         }
@@ -48,6 +79,23 @@
             --border-color: #2b2b2b;
         }
 
+        :root.theme-light {
+            --bg-editor: #ffffff;
+            --bg-sidebar: #f3f3f3;
+            --bg-activity: #2c2c2c;
+            --bg-titlebar: #dddddd;
+            --bg-statusbar: #007acc;
+            --bg-tab-active: #ffffff;
+            --bg-tab-inactive: #ececec;
+            --bg-hover: rgba(0, 0, 0, 0.05);
+            --bg-list-hover: #e8e8e8;
+            --bg-list-active: #cfdcea;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --accent: #007acc;
+            --border-color: #cccccc;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-editor);
@@ -57,144 +105,343 @@
 
         .monaco-editor-container {
             position: absolute;
-            top: 0; bottom: 0; left: 0; right: 0;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
         }
 
         /* Utilities */
-        .vscode-hover:hover { background-color: var(--bg-hover); color: white; }
-        .tab-active { background-color: var(--bg-tab-active); color: white; border-top: 1px solid var(--accent); }
-        .tab-inactive { background-color: var(--bg-tab-inactive); border-top: 1px solid transparent; }
-        .tab-inactive:hover { background-color: var(--bg-sidebar); }
-        
-        .file-active { background-color: var(--bg-list-active) !important; color: white; }
-        .file-hover:hover { background-color: var(--bg-list-hover); color: white; }
+        .vscode-hover:hover {
+            background-color: var(--bg-hover);
+            color: white;
+        }
+
+        .tab-active {
+            background-color: var(--bg-tab-active);
+            color: white;
+            border-top: 1px solid var(--accent);
+        }
+
+        .tab-inactive {
+            background-color: var(--bg-tab-inactive);
+            border-top: 1px solid transparent;
+        }
+
+        .tab-inactive:hover {
+            background-color: var(--bg-sidebar);
+        }
+
+        .file-active {
+            background-color: var(--bg-list-active) !important;
+            color: white;
+        }
+
+        .file-hover:hover {
+            background-color: var(--bg-list-hover);
+            color: white;
+        }
+
+        .truncate-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
 
         /* Empty Editor Watermark */
         .editor-watermark {
             display: none;
             position: absolute;
-            top: 50%; left: 50%;
+            top: 50%;
+            left: 50%;
             transform: translate(-50%, -50%);
             opacity: 0.05;
             pointer-events: none;
         }
-        .show-watermark .editor-watermark { display: block; }
-        .show-watermark .monaco-editor-container { display: none; }
-        .show-watermark #breadcrumbs { display: none; }
-        .show-watermark #editor-actions { display: none; }
 
-        .lucide { stroke-width: 1.5; }
-        
+        .show-watermark .editor-watermark {
+            display: block;
+        }
+
+        .show-watermark .monaco-editor-container {
+            display: none;
+        }
+
+        .show-watermark #breadcrumbs {
+            display: none;
+        }
+
+        .show-watermark #editor-actions {
+            display: none;
+        }
+
+        .lucide {
+            stroke-width: 1.5;
+        }
+
         /* Terminal Styles */
         #terminal-output div {
             padding: 2px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
-        
+
         /* Menu Dropdown Styles */
-        .menu-active { background-color: rgba(255, 255, 255, 0.1); color: white; }
+        .menu-active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        /* Split.js Gutters */
+        .gutter {
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: transparent;
+            z-index: 10;
+        }
+
+        .gutter.gutter-horizontal {
+            cursor: col-resize;
+            width: 4px;
+        }
+
+        .gutter.gutter-horizontal:hover {
+            background-color: var(--accent);
+            opacity: 0.5;
+        }
+
+        .gutter.gutter-vertical {
+            cursor: row-resize;
+            height: 4px;
+        }
+
+        .gutter.gutter-vertical:hover {
+            background-color: var(--accent);
+            opacity: 0.5;
+        }
+
+        /* Activity Bar Indicator */
+        .activity-item-active {
+            color: white;
+            border-left: 2px solid white;
+        }
+
+        /* Zen Mode */
+        .zen-mode #title-bar,
+        .zen-mode #activity-bar,
+        .zen-mode #sidebar-container,
+        .zen-mode #terminal-panel,
+        .zen-mode #status-bar {
+            display: none !important;
+        }
+
+        .zen-mode .gutter {
+            display: none !important;
+        }
+
+        .zen-mode .flex-1.flex.overflow-hidden {
+            padding: 0;
+        }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col select-none text-[13px]">
+
+<body class="h-screen w-screen overflow-hidden flex flex-col select-none text-[13px]" ondrop="dropHandler(event)"
+    ondragover="dragOverHandler(event)">
 
     <!-- Global Menu Dropdown Container -->
-    <div id="menu-dropdown" class="hidden absolute z-50 bg-[#252526] border border-[#454545] shadow-lg py-1 text-[#cccccc] text-[12px] min-w-[220px] rounded shadow-[0_4px_6px_rgba(0,0,0,0.3)]"></div>
+    <div id="menu-dropdown"
+        class="hidden absolute z-50 bg-[#252526] border border-[#454545] shadow-lg py-1 text-[#cccccc] text-[12px] min-w-[220px] rounded shadow-[0_4px_6px_rgba(0,0,0,0.3)]">
+    </div>
+
+    <!-- Command Palette Overlay -->
+    <div id="command-palette" class="hidden fixed inset-0 z-[100] flex justify-center pt-2">
+        <div class="fixed inset-0 bg-black/50" onclick="closeCommandPalette()"></div>
+        <div
+            class="relative w-full max-w-[600px] bg-[#252526] shadow-2xl rounded-lg border border-[#3c3c3c] flex flex-col overflow-hidden h-fit max-h-[400px]">
+            <div class="p-2 border-b border-[#3c3c3c] flex items-center bg-[#1e1e1e]">
+                <span id="palette-prefix" class="text-[#007acc] mr-2 font-bold">></span>
+                <input type="text" id="palette-input"
+                    class="flex-1 bg-transparent border-none outline-none text-[#cccccc] text-[13px]"
+                    placeholder="Type a command or file name..." autocomplete="off">
+            </div>
+            <div id="palette-results" class="flex-1 overflow-y-auto no-scrollbar py-1">
+                <!-- Results go here -->
+            </div>
+        </div>
+    </div>
 
     <!-- Title Bar -->
-    <div class="h-[35px] w-full flex items-center justify-between px-2 text-[12px] border-b border-[#2b2b2b] z-20" style="background-color: var(--bg-titlebar);">
+    <div class="h-[35px] w-full flex items-center justify-between px-2 text-[12px] border-b border-[#2b2b2b] z-20"
+        style="background-color: var(--bg-titlebar);">
         <div class="flex items-center gap-2 h-full w-1/3">
             <div class="flex items-center justify-center text-[#007acc] w-[35px] h-full">
                 <svg viewBox="0 0 24 24" fill="currentColor" class="w-[18px] h-[18px]">
-                    <path d="M17.5 3l-6 5.5-3-2.5-4 3 13 11 6-5V3l-6 5.5z"/>
+                    <path d="M17.5 3l-6 5.5-3-2.5-4 3 13 11 6-5V3l-6 5.5z" />
                 </svg>
             </div>
             <div class="hidden sm:flex items-center h-full text-[#cccccc]">
-                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'File')" onmouseenter="hoverMenu(event, 'File')">File</div>
-                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Edit')" onmouseenter="hoverMenu(event, 'Edit')">Edit</div>
-                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Selection')" onmouseenter="hoverMenu(event, 'Selection')">Selection</div>
-                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'View')" onmouseenter="hoverMenu(event, 'View')">View</div>
-                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Run')" onmouseenter="hoverMenu(event, 'Run')">Run</div>
-                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Terminal')" onmouseenter="hoverMenu(event, 'Terminal')">Terminal</div>
-                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Help')" onmouseenter="hoverMenu(event, 'Help')">Help</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]"
+                    onclick="toggleMenu(event, 'File')" onmouseenter="hoverMenu(event, 'File')">File</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]"
+                    onclick="toggleMenu(event, 'Edit')" onmouseenter="hoverMenu(event, 'Edit')">Edit</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]"
+                    onclick="toggleMenu(event, 'Selection')" onmouseenter="hoverMenu(event, 'Selection')">Selection
+                </div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]"
+                    onclick="toggleMenu(event, 'View')" onmouseenter="hoverMenu(event, 'View')">View</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]"
+                    onclick="toggleMenu(event, 'Run')" onmouseenter="hoverMenu(event, 'Run')">Run</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]"
+                    onclick="toggleMenu(event, 'Terminal')" onmouseenter="hoverMenu(event, 'Terminal')">Terminal</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]"
+                    onclick="toggleMenu(event, 'Theme')" onmouseenter="hoverMenu(event, 'Theme')">Theme</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]"
+                    onclick="toggleMenu(event, 'Help')" onmouseenter="hoverMenu(event, 'Help')">Help</div>
             </div>
         </div>
 
         <div class="flex justify-center w-1/3 h-full items-center">
-            <div class="flex items-center w-full max-w-[450px] h-[24px] bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.12)] border border-[rgba(255,255,255,0.1)] rounded-md px-3 cursor-pointer text-[#cccccc] transition-colors">
+            <div class="flex items-center w-full max-w-[450px] h-[24px] bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.12)] border border-[rgba(255,255,255,0.1)] rounded-md px-3 cursor-pointer text-[#cccccc] transition-colors"
+                onclick="openCommandPalette(false)">
                 <i data-lucide="search" class="w-3.5 h-3.5 mr-2 text-[#858585]"></i>
                 <span class="flex-1 text-center text-[12px]">vscode-clone workspace</span>
             </div>
         </div>
 
         <div class="flex items-center justify-end gap-1 h-full w-1/3 pr-2 text-[#cccccc]">
-            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" onclick="toggleSidebar()"><i data-lucide="panel-left" class="w-4 h-4"></i></div>
-            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" onclick="toggleTerminal()"><i data-lucide="panel-bottom" class="w-4 h-4"></i></div>
-            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer"><i data-lucide="panel-right" class="w-4 h-4"></i></div>
-            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer ml-1"><i data-lucide="layout-dashboard" class="w-4 h-4"></i></div>
+            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" onclick="toggleSidebar()"><i
+                    data-lucide="panel-left" class="w-4 h-4"></i></div>
+            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" onclick="toggleTerminal()"><i
+                    data-lucide="panel-bottom" class="w-4 h-4"></i></div>
+            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer"><i data-lucide="panel-right"
+                    class="w-4 h-4"></i></div>
+            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer ml-1"><i
+                    data-lucide="layout-dashboard" class="w-4 h-4"></i></div>
         </div>
     </div>
 
     <!-- Main Content -->
     <div class="flex-1 flex overflow-hidden">
-        
+
         <!-- Activity Bar -->
-        <div class="w-[48px] h-full flex flex-col items-center justify-between py-3 z-10 shrink-0 border-r border-[#2b2b2b]" style="background-color: var(--bg-activity);">
+        <div class="w-[48px] h-full flex flex-col items-center justify-between py-3 z-10 shrink-0 border-r border-[#2b2b2b]"
+            style="background-color: var(--bg-activity);">
             <div class="flex flex-col gap-5 w-full items-center text-[#858585]">
-                <div class="relative w-full flex justify-center cursor-pointer text-white" onclick="toggleSidebar()">
-                    <div class="absolute left-0 top-0 bottom-0 w-[2px] bg-white"></div>
+                <div id="activity-explorer"
+                    class="relative w-full flex justify-center cursor-pointer activity-item-active"
+                    onclick="switchSidebarTab('explorer')">
                     <i data-lucide="files" class="w-6 h-6"></i>
                 </div>
-                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="search" class="w-6 h-6"></i></div>
-                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="git-branch" class="w-6 h-6"></i></div>
-                <div class="w-full flex justify-center cursor-pointer hover:text-white" onclick="runCode()"><i data-lucide="play" class="w-6 h-6"></i></div>
-                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="blocks" class="w-6 h-6"></i></div>
+                <div id="activity-search" class="w-full flex justify-center cursor-pointer hover:text-white"
+                    onclick="switchSidebarTab('search')">
+                    <i data-lucide="search" class="w-6 h-6"></i>
+                </div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="git-branch"
+                        class="w-6 h-6"></i></div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white" onclick="runCode()"><i
+                        data-lucide="play" class="w-6 h-6"></i></div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="blocks"
+                        class="w-6 h-6"></i></div>
             </div>
             <div class="flex flex-col gap-5 w-full items-center text-[#858585]">
-                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="circle-user" class="w-6 h-6"></i></div>
-                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="settings" class="w-6 h-6"></i></div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="circle-user"
+                        class="w-6 h-6"></i></div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white"
+                    onclick="openCommandPalette(true)"><i data-lucide="settings" class="w-6 h-6"></i></div>
             </div>
         </div>
 
-        <!-- Sidebar (Explorer) -->
-        <div id="sidebar" class="w-[250px] h-full flex flex-col shrink-0 transition-all duration-150 border-r border-[#2b2b2b]" style="background-color: var(--bg-sidebar);">
-            <!-- Header -->
-            <div class="h-[35px] pl-5 pr-2 flex items-center justify-between text-[11px] text-[#cccccc]">
-                <span>EXPLORER</span>
-                <div class="flex items-center gap-1">
-                    <i data-lucide="file-plus" onclick="createNewFile()" class="w-4 h-4 cursor-pointer hover:text-white rounded p-0.5 hover:bg-[rgba(255,255,255,0.1)]" title="New File"></i>
-                    <i data-lucide="more-horizontal" class="w-4 h-4 cursor-pointer hover:text-white rounded p-0.5 hover:bg-[rgba(255,255,255,0.1)]"></i>
+        <!-- Sidebar Container -->
+        <div id="sidebar-container" class="h-full flex flex-col min-w-0" style="background-color: var(--bg-sidebar);">
+            <div id="sidebar" class="w-full h-full flex flex-col border-r border-[#2b2b2b]">
+                <!-- Explorer Tab -->
+                <div id="tab-explorer" class="flex flex-col h-full">
+                    <div class="h-[35px] pl-5 pr-2 flex items-center justify-between text-[11px] text-[#cccccc] shrink-0">
+                        <span class="truncate-text">EXPLORER</span>
+                        <div class="flex items-center gap-1">
+                            <i data-lucide="file-plus" onclick="createNewFile()"
+                                class="w-4 h-4 cursor-pointer hover:text-white rounded p-0.5 hover:bg-[rgba(255,255,255,0.1)]"
+                                title="New File"></i>
+                            <i data-lucide="more-horizontal"
+                                class="w-4 h-4 cursor-pointer hover:text-white rounded p-0.5 hover:bg-[rgba(255,255,255,0.1)]"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto">
+                        <div class="flex items-center px-1 py-1 cursor-pointer hover:bg-[rgba(255,255,255,0.05)] font-bold text-[11px] text-[#cccccc]"
+                            onclick="toggleFolder()">
+                            <i data-lucide="chevron-down" id="folder-chevron"
+                                class="w-4 h-4 mr-0.5 transition-transform duration-200"></i>
+                            <span class="tracking-wide truncate-text">VSCODE-CLONE</span>
+                        </div>
+                        <div class="flex flex-col text-[13px] text-[#cccccc]" id="file-tree"></div>
+                    </div>
+
+                    <!-- Outline Accordion -->
+                    <div class="border-t border-[#2b2b2b]">
+                        <div class="flex items-center px-1 py-1 cursor-pointer hover:bg-[rgba(255,255,255,0.05)] font-bold text-[11px] text-[#cccccc]"
+                            onclick="toggleOutline()">
+                            <i data-lucide="chevron-down" id="outline-chevron"
+                                class="w-4 h-4 mr-0.5 transition-transform duration-200"></i>
+                            <span class="tracking-wide truncate-text">OUTLINE</span>
+                        </div>
+                        <div id="outline-container"
+                            class="flex flex-col text-[12px] text-[#858585] max-h-[300px] overflow-y-auto">
+                            <!-- JS Generated Symbols -->
+                        </div>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Accordion -->
-            <div class="flex-1 overflow-y-auto">
-                <div class="flex items-center px-1 py-1 cursor-pointer hover:bg-[rgba(255,255,255,0.05)] font-bold text-[11px] text-[#cccccc]" onclick="toggleFolder()">
-                    <i data-lucide="chevron-down" id="folder-chevron" class="w-4 h-4 mr-0.5 transition-transform duration-200"></i>
-                    <span class="tracking-wide">VSCODE-CLONE</span>
-                </div>
-                
-                <!-- File Tree -->
-                <div class="flex flex-col text-[13px] text-[#cccccc]" id="file-tree">
-                    <!-- JS Generated -->
+
+                <!-- Search Tab -->
+                <div id="tab-search" class="hidden flex flex-col h-full">
+                    <div class="h-[35px] pl-5 pr-2 flex items-center text-[11px] text-[#cccccc]">
+                        <span>SEARCH</span>
+                    </div>
+                    <div class="p-4 flex flex-col gap-2">
+                        <div class="relative">
+                            <input type="text" id="global-search-input"
+                                class="w-full bg-[#1e1e1e] border border-[#3c3c3c] text-[#cccccc] px-2 py-1 text-[12px] outline-none rounded"
+                                placeholder="Search">
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="global-replace-input"
+                                class="w-full bg-[#1e1e1e] border border-[#3c3c3c] text-[#cccccc] px-2 py-1 text-[12px] outline-none rounded"
+                                placeholder="Replace">
+                        </div>
+                    </div>
+                    <div id="search-results" class="flex-1 overflow-y-auto px-4 text-[12px] text-[#858585]">
+                        <div class="py-2 italic">Search in files...</div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Editor Area -->
-        <div class="flex-1 h-full flex flex-col min-w-0 relative" style="background-color: var(--bg-editor);" id="editor-wrapper">
-            
+        <div class="flex-1 h-full flex flex-col min-w-0 relative" style="background-color: var(--bg-editor);"
+            id="editor-wrapper">
+
             <!-- Tab Bar Container -->
-            <div class="flex items-center justify-between pr-2 border-b border-[#2b2b2b]" style="background-color: var(--bg-sidebar);">
+            <div class="flex items-center justify-between pr-2 border-b border-[#2b2b2b]"
+                style="background-color: var(--bg-sidebar);">
                 <!-- Editor Tabs -->
                 <div class="flex items-end overflow-x-auto no-scrollbar flex-1" id="editor-tabs">
                     <!-- JS Generated -->
                 </div>
                 <!-- Editor Actions -->
                 <div class="flex items-center gap-2 pl-2 text-[#cccccc]" id="editor-actions">
-                    <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer text-[#4ade80]" title="Run Code" onclick="runCode()">
+                    <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer hidden" id="action-preview"
+                        title="Show Preview" onclick="togglePreview()">
+                        <i data-lucide="columns-2" class="w-4 h-4"></i>
+                    </div>
+                    <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" title="Format Document"
+                        onclick="formatDocument()">
+                        <i data-lucide="align-left" class="w-4 h-4"></i>
+                    </div>
+                    <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer text-[#4ade80]"
+                        title="Run Code" onclick="runCode()">
                         <i data-lucide="play" class="w-4 h-4"></i>
                     </div>
-                    <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" title="Download File" onclick="downloadCurrentFile()">
+                    <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" title="Download File"
+                        onclick="downloadCurrentFile()">
                         <i data-lucide="download" class="w-4 h-4"></i>
                     </div>
                     <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" title="Split Editor Right">
@@ -204,10 +451,14 @@
             </div>
 
             <!-- Breadcrumbs -->
-            <div id="breadcrumbs" class="h-[22px] w-full flex items-center px-4 text-[12px] text-[#969696] shadow-[0_1px_2px_rgba(0,0,0,0.2)] z-10 shrink-0" style="background-color: var(--bg-editor);">
-                <span class="hover:text-white cursor-pointer">vscode-clone</span>
+            <div id="breadcrumbs"
+                class="h-[22px] w-full flex items-center px-4 text-[12px] text-[#969696] shadow-[0_1px_2px_rgba(0,0,0,0.2)] z-10 shrink-0"
+                style="background-color: var(--bg-editor);">
+                <span class="hover:text-white cursor-pointer"
+                    onclick="toggleBreadcrumbMenu(event, 'root')">vscode-clone</span>
                 <i data-lucide="chevron-right" class="w-3.5 h-3.5 mx-0.5"></i>
-                <div class="flex items-center hover:text-white cursor-pointer">
+                <div class="flex items-center hover:text-white cursor-pointer"
+                    onclick="toggleBreadcrumbMenu(event, 'file')">
                     <span id="breadcrumb-icon" class="mr-1"></span>
                     <span id="breadcrumb-filename">index.js</span>
                 </div>
@@ -215,30 +466,51 @@
 
             <!-- Editor / Terminal Split Container -->
             <div class="flex-1 flex flex-col relative h-full overflow-hidden">
-                <!-- Monaco Instance -->
-                <div class="flex-1 relative w-full h-full min-h-0">
-                    <!-- Watermark for empty state -->
-                    <svg class="editor-watermark w-64 h-64 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.5 3l-6 5.5-3-2.5-4 3 13 11 6-5V3l-6 5.5z"/>
-                    </svg>
-                    <div id="monaco-editor" class="monaco-editor-container"></div>
+                
+                <!-- Upper Area: Editor + Preview -->
+                <div id="upper-split" class="flex-1 flex min-h-0">
+                    <!-- Monaco Instance -->
+                    <div id="editor-pane" class="flex-1 relative min-w-0">
+                        <!-- Watermark for empty state -->
+                        <svg class="editor-watermark w-64 h-64 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.5 3l-6 5.5-3-2.5-4 3 13 11 6-5V3l-6 5.5z" />
+                        </svg>
+                        <div id="monaco-editor" class="monaco-editor-container h-full w-full"></div>
+                    </div>
+
+                    <!-- Preview Pane (Side by Side) -->
+                    <div id="preview-pane" class="hidden h-full border-l border-[#2b2b2b] flex flex-col"
+                        style="background-color: white;">
+                        <div
+                            class="h-[35px] border-b border-[#2b2b2b] flex items-center justify-between px-4 bg-[#252526] text-[#cccccc]">
+                            <span class="text-[11px] font-bold tracking-wider">PREVIEW</span>
+                            <i data-lucide="x" class="w-4 h-4 cursor-pointer hover:bg-[rgba(255,255,255,0.1)] rounded p-0.5"
+                                onclick="togglePreview()"></i>
+                        </div>
+                        <div id="preview-content" class="flex-1 overflow-auto p-4 select-text">
+                            <!-- Preview content goes here -->
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Terminal Bottom Panel -->
-                <div id="terminal-panel" class="hidden h-[250px] w-full shrink-0 flex-col border-t border-[#2b2b2b]" style="background-color: var(--bg-editor);">
+                <div id="terminal-panel" class="hidden h-[250px] w-full shrink-0 flex-col border-t border-[#2b2b2b]"
+                    style="background-color: var(--bg-editor);">
                     <div class="flex items-center justify-between h-[35px] px-4 border-b border-[#2b2b2b]">
-                        <div class="flex gap-4 text-[11px] font-medium tracking-wide text-[#cccccc]">
-                            <span class="cursor-pointer hover:text-white pb-2 border-b-2 border-transparent">PROBLEMS</span>
-                            <span class="cursor-pointer hover:text-white pb-2 border-b-2 border-transparent">OUTPUT</span>
-                            <span class="cursor-pointer hover:text-white pb-2 border-b-2 border-[#007acc] text-white">TERMINAL</span>
+                        <div class="flex gap-4 text-[11px] font-medium tracking-wide text-[#cccccc]" id="terminal-tab-container">
+                            <!-- JS Generated -->
+                            <span class="cursor-pointer hover:text-white pb-2 border-b-2 border-[#007acc] text-white">TERMINAL (bash 1)</span>
                         </div>
                         <div class="flex items-center gap-2 text-[#cccccc]">
-                            <i data-lucide="trash-2" class="w-3.5 h-3.5 cursor-pointer hover:text-white" onclick="clearTerminal()" title="Clear Terminal"></i>
-                            <i data-lucide="x" class="w-4 h-4 cursor-pointer hover:text-white ml-2" onclick="toggleTerminal()" title="Close Panel"></i>
+                            <i data-lucide="plus" class="w-3.5 h-3.5 cursor-pointer hover:text-white" onclick="addTerminal()" title="New Terminal"></i>
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5 cursor-pointer hover:text-white"
+                                onclick="clearTerminal()" title="Clear Terminal"></i>
+                            <i data-lucide="x" class="w-4 h-4 cursor-pointer hover:text-white ml-2"
+                                onclick="toggleTerminal()" title="Close Panel"></i>
                         </div>
                     </div>
-                    <div id="terminal-output" class="flex-1 p-3 overflow-y-auto font-mono text-[12px] text-[#cccccc] select-text">
-                        <div class="text-[#007acc]">VS Code Clone Terminal - Ready</div>
+                    <div id="terminal-container" class="flex-1 p-1 overflow-hidden">
+                        <!-- xterm.js will mount here -->
                     </div>
                 </div>
             </div>
@@ -247,33 +519,50 @@
     </div>
 
     <!-- Status Bar -->
-    <div class="h-[22px] w-full flex items-center justify-between text-white text-[12px] px-2 select-none z-20" style="background-color: var(--bg-statusbar);">
+    <div class="h-[22px] w-full flex items-center justify-between text-white text-[12px] px-2 select-none z-20"
+        style="background-color: var(--bg-statusbar);">
         <div class="flex items-center gap-2 h-full">
-            <div class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors bg-[rgba(255,255,255,0.1)]">
-                <i data-lucide="remote" class="w-3.5 h-3.5"></i>
-                <span>><</span>
+            <div
+                class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors bg-[rgba(255,255,255,0.1)]">
+                <i data-lucide="network" class="w-3.5 h-3.5"></i>
+                <span>><< /span>
             </div>
-            <div class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
+            <div
+                class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
                 <i data-lucide="git-branch" class="w-3.5 h-3.5"></i>
                 <span>main*</span>
             </div>
-            <div class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
+            <div
+                class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
                 <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
             </div>
-            <div class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
+            <div
+                class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
                 <i data-lucide="x-circle" class="w-3 h-3"></i> 0
                 <i data-lucide="alert-triangle" class="w-3 h-3 ml-1"></i> 0
             </div>
         </div>
         <div class="flex items-center h-full">
-            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors" id="status-line-col">Ln 1, Col 1</div>
-            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">Spaces: 4</div>
-            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">UTF-8</div>
-            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors" id="status-language">JavaScript</div>
-            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors"
+                id="status-line-col">Ln 1, Col 1</div>
+            <div
+                class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">
+                Spaces: 4</div>
+            <div
+                class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">
+                UTF-8</div>
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors"
+                id="status-language">JavaScript</div>
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors"
+                id="status-prettier">
                 <i data-lucide="check-check" class="w-3.5 h-3.5 mr-1"></i> Prettier
             </div>
-            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors hidden text-[#fbc02d]"
+                id="status-vim">
+                VIM
+            </div>
+            <div
+                class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">
                 <i data-lucide="bell" class="w-3.5 h-3.5"></i>
             </div>
         </div>
@@ -281,12 +570,12 @@
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
-    
+
     <script>
         lucide.createIcons();
 
         // System Data
-        const fileSystem = {
+        let fileSystem = {
             'index.js': {
                 language: 'javascript',
                 iconColor: 'text-[#f1e05a]',
@@ -341,11 +630,317 @@ console.log("Ready!");`
         // State
         let currentFile = 'index.js';
         let openFiles = ['index.js', 'style.css', 'index.html'];
+        let currentTheme = 'dark'; // 'dark' or 'light'
+        let currentAccent = '#007acc';
+        // Sound Engine
+        const SoundEngine = {
+            ctx: null,
+            init() {
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            },
+            play(type = 'pop') {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                if (type === 'pop') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.1);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.3);
+                }
+            }
+        };
+
+        let isZenMode = false;
+        function toggleZenMode() {
+            isZenMode = !isZenMode;
+            document.body.classList.toggle('zen-mode', isZenMode);
+            if (editorInstance) editorInstance.layout();
+            SoundEngine.play('pop');
+        }
+
+        let isVimMode = false;
+        let vimModeInstance = null;
+
+        // Persistence Functions
+        function saveState() {
+            const state = {
+                fileSystem,
+                currentFile,
+                openFiles,
+                currentTheme,
+                currentAccent
+            };
+            localStorage.setItem('vscode-clone-state', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const savedState = localStorage.getItem('vscode-clone-state');
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    fileSystem = parsed.fileSystem || fileSystem;
+                    currentFile = parsed.currentFile || currentFile;
+                    openFiles = parsed.openFiles || openFiles;
+                    currentTheme = parsed.currentTheme || 'dark';
+                    currentAccent = parsed.currentAccent || '#007acc';
+
+                    // Apply theme & accent
+                    applyTheme(currentTheme);
+                    applyAccent(currentAccent);
+                } catch (e) {
+                    console.error("Failed to load state:", e);
+                }
+            }
+        }
+
         let editorInstance = null;
         let isSidebarOpen = true;
         let isFolderOpen = true;
+        let isPreviewOpen = false;
         let isTerminalOpen = false;
-        let activeMenu = null;
+
+        // Initialize State from LocalStorage
+        loadState();
+        
+        const globalCommands = [
+            { id: 'new-file', label: 'File: New File', action: createNewFile, shortcut: 'Ctrl+N' },
+            { id: 'download-file', label: 'File: Download Current File', action: downloadCurrentFile, shortcut: 'Ctrl+S' },
+            { id: 'toggle-sidebar', label: 'View: Toggle Side Bar', action: toggleSidebar, shortcut: 'Ctrl+B' },
+            { id: 'toggle-terminal', label: 'View: Toggle Terminal', action: toggleTerminal, shortcut: 'Ctrl+`' },
+            { id: 'toggle-theme', label: 'View: Toggle Dark/Light Theme', action: toggleTheme },
+            { id: 'accent-blue', label: 'Theme: Set Accent Blue', action: () => applyAccent('#007acc') },
+            { id: 'accent-purple', label: 'Theme: Set Accent Purple', action: () => applyAccent('#a855f7') },
+            { id: 'accent-orange', label: 'Theme: Set Accent Orange', action: () => applyAccent('#f97316') },
+            { id: 'accent-green', label: 'Theme: Set Accent Green', action: () => applyAccent('#22c55e') },
+            { id: 'accent-red', label: 'Theme: Set Accent Red', action: () => applyAccent('#ef4444') },
+            { id: 'format-document', label: 'Edit: Format Document', action: formatDocument, shortcut: 'Alt+Shift+F' },
+            { id: 'run-code', label: 'Run: Run Code', action: runCode, shortcut: 'F5' },
+            { id: 'toggle-vim', label: 'Edit: Toggle Vim Mode', action: toggleVimMode },
+            { id: 'github-clone', label: 'Git: Clone GitHub Repository', action: cloneGitHubRepo },
+            { id: 'browser-tab', label: 'View: Open Internal Browser Tab', action: openBrowserTab },
+            { id: 'export-zip', label: 'File: Export Workspace to ZIP', action: exportToZip },
+            { id: 'clear-terminal', label: 'Terminal: Clear Terminal', action: () => terminal && terminal.clear() },
+            { id: 'open-folder', label: 'File: Open Folder (local)', action: openFolder, shortcut: 'Ctrl+O' },
+            { id: 'zen-mode', label: 'View: Toggle Zen Mode', action: toggleZenMode, shortcut: 'Ctrl+K Z' },
+            { id: 'load-extension', label: 'View: Load Extension (remote JS)', action: loadExtension },
+            { id: 'about', label: 'Help: About VS Code Clone', action: () => alert('VS Code Web Clone v2.2.1') }
+        ];
+
+        // --- NEW: XTERM & SHELL LOGIC ---
+        let terminal = null;
+        let fitAddon = null;
+        let currentCommand = '';
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        const PROMPT = '\x1b[1;32m➜\x1b[0m \x1b[1;34m~\x1b[0m ';
+
+        function initTerminal() {
+            if (terminal) return;
+
+            terminal = new Terminal({
+                cursorBlink: true,
+                theme: {
+                    background: '#1e1e1e',
+                    foreground: '#cccccc',
+                    cursor: '#ffffff'
+                },
+                fontSize: 12,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                convertEol: true
+            });
+
+            fitAddon = new FitAddon.FitAddon();
+            terminal.loadAddon(fitAddon);
+            terminal.open(document.getElementById('terminal-container'));
+            window.terminal = terminal; // Make it accessible to Pyodide
+            fitAddon.fit();
+
+            terminal.writeln('Welcome to \x1b[1;36mVS Code Clone Interactive Terminal\x1b[0m');
+            terminal.writeln('Type \x1b[1;33mhelp\x1b[0m to see available commands.\r\n');
+            terminal.write(PROMPT);
+
+            terminal.onData(data => {
+                const code = data.charCodeAt(0);
+                if (code === 13) { // Enter
+                    terminal.write('\r\n');
+                    handleCommand(currentCommand);
+                    if (currentCommand.trim()) {
+                        commandHistory.unshift(currentCommand);
+                        historyIndex = -1;
+                    }
+                    currentCommand = '';
+                } else if (code === 127) { // Backspace
+                    if (currentCommand.length > 0) {
+                        currentCommand = currentCommand.slice(0, -1);
+                        terminal.write('\b \b');
+                    }
+                } else if (data === '\u001b[A') { // Up Arrow
+                    if (historyIndex < commandHistory.length - 1) {
+                        historyIndex++;
+                        clearCurrentLine();
+                        currentCommand = commandHistory[historyIndex];
+                        terminal.write(currentCommand);
+                    }
+                } else if (data === '\u001b[B') { // Down Arrow
+                    if (historyIndex > 0) {
+                        historyIndex--;
+                        clearCurrentLine();
+                        currentCommand = commandHistory[historyIndex];
+                        terminal.write(currentCommand);
+                    } else if (historyIndex === 0) {
+                        historyIndex = -1;
+                        clearCurrentLine();
+                        currentCommand = '';
+                    }
+                } else if (code < 32) {
+                    // Ignore other control codes
+                } else {
+                    currentCommand += data;
+                    terminal.write(data);
+                }
+            });
+        }
+
+        function clearCurrentLine() {
+            terminal.write('\r' + PROMPT + ' '.repeat(currentCommand.length + 10) + '\r' + PROMPT);
+        }
+
+        async function handleCommand(cmd) {
+            const trimmed = cmd.trim();
+            if (!trimmed) {
+                terminal.write(PROMPT);
+                return;
+            }
+
+            const parts = trimmed.split(' ');
+            const command = parts[0];
+            const args = parts.slice(1);
+
+            switch (command) {
+                case 'help':
+                    terminal.writeln('Available commands:');
+                    terminal.writeln('  ls       List files');
+                    terminal.writeln('  cat      Read file content');
+                    terminal.writeln('  node     Run a JavaScript file');
+                    terminal.writeln('  python   Run a Python file');
+                    terminal.writeln('  clear    Clear the terminal');
+                    terminal.writeln('  pwd      Print working directory');
+                    terminal.writeln('  whoami   Who are you?');
+                    break;
+                case 'ls':
+                    const files = Object.keys(fileSystem).join('  ');
+                    terminal.writeln(files || 'No files in virtual workspace.');
+                    break;
+                case 'cat':
+                    if (args.length === 0) terminal.writeln('Usage: cat [filename]');
+                    else if (fileSystem[args[0]]) terminal.writeln(fileSystem[args[0]].content);
+                    else terminal.writeln(`cat: ${args[0]}: No such file`);
+                    break;
+                case 'node':
+                    if (args.length === 0) terminal.writeln('Usage: node [filename]');
+                    else {
+                        const file = fileSystem[args[0]];
+                        if (file && file.language === 'javascript') {
+                            executeJS(file.content);
+                        } else {
+                            terminal.writeln(`node: cannot find or run ${args[0]}`);
+                        }
+                    }
+                    break;
+                case 'python':
+                    if (args.length === 0) terminal.writeln('Usage: python [filename]');
+                    else {
+                        const file = fileSystem[args[0]];
+                        if (file && file.language === 'python') {
+                            executePython(file.content);
+                        } else {
+                            terminal.writeln(`python: cannot find or run ${args[0]}`);
+                        }
+                    }
+                    break;
+                case 'clear':
+                    terminal.clear();
+                    break;
+                case 'pwd':
+                    terminal.writeln('/home/user/workspace');
+                    break;
+                case 'whoami':
+                    terminal.writeln('vscode-clone-user');
+                    break;
+                default:
+                    terminal.writeln(`sh: command not found: ${command}`);
+            }
+
+            if (command !== 'node' && command !== 'python') {
+                terminal.write(PROMPT);
+            }
+        }
+
+        function executeJS(code) {
+            terminal.writeln('\x1b[1;32m>> Executing Node.js script...\x1b[0m');
+            const originalLog = console.log;
+            console.log = (...args) => {
+                terminal.writeln(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+                originalLog(...args);
+            };
+            try {
+                const execFunction = new Function(code);
+                execFunction();
+            } catch (e) {
+                terminal.writeln(`\x1b[1;31mError: ${e.message}\x1b[0m`);
+            }
+            console.log = originalLog;
+            terminal.write(PROMPT);
+        }
+
+        async function executePython(code) {
+            terminal.writeln('\x1b[1;32m>> Executing Python script (Pyodide)...\x1b[0m');
+            try {
+                if (!window.pyodide) {
+                    terminal.writeln('Loading Pyodide runtime...');
+                    window.pyodide = await loadPyodide();
+                    // Set up stdout redirection once
+                    window.pyodide.runPython(`
+                        import sys
+                        import io
+                        class TerminalWriter(io.TextIOBase):
+                            def write(self, s):
+                                import js
+                                js.terminal.write(s.replace("\\n", "\\r\\n"))
+                                return len(s)
+                        sys.stdout = TerminalWriter()
+                        sys.stderr = TerminalWriter()
+                    `);
+                }
+                await window.pyodide.runPythonAsync(code);
+            } catch (err) {
+                terminal.writeln(`\x1b[1;31mPython Error: ${err.message}\x1b[0m`);
+            }
+            terminal.write(PROMPT);
+        }
+        // --- END: XTERM & SHELL LOGIC ---
+
+        const userSnippets = [
+            { label: 'clg', insertText: 'console.log($1);', detail: 'Log to console' },
+            { label: 'func', insertText: 'function ${1:name}(${2:params}) {\n\t$0\n}', detail: 'Function skeleton' },
+            { label: 'ife', insertText: 'if (${1:condition}) {\n\t$2\n} else {\n\t$0\n}', detail: 'If-Else block' },
+            { label: 'fori', insertText: 'for (let i = 0; i < ${1:array}.length; i++) {\n\t$0\n}', detail: 'For loop' }
+        ];
 
         // UI Renders
         function renderFileTree() {
@@ -357,14 +952,14 @@ console.log("Ready!");`
             Object.keys(fileSystem).forEach(filename => {
                 const file = fileSystem[filename];
                 const isActive = filename === currentFile;
-                
+
                 const div = document.createElement('div');
-                div.className = `group flex items-center justify-between pl-6 pr-2 py-[3px] cursor-pointer file-hover ${isActive ? 'file-active' : ''}`;
-                
+                div.className = `group flex items-center justify-between pl-6 pr-2 py-[3px] cursor-pointer file-hover ${isActive ? 'file-active' : ''} min-w-0`;
+
                 div.innerHTML = `
-                    <div class="flex items-center flex-1 overflow-hidden" onclick="switchFile('${filename}')">
+                    <div class="flex items-center flex-1 min-w-0 overflow-hidden" onclick="switchFile('${filename}')">
                         <i data-lucide="${file.lucideIcon}" class="w-4 h-4 mr-1.5 shrink-0 ${file.iconColor}"></i>
-                        <span class="truncate">${filename}</span>
+                        <span class="truncate-text flex-1">${filename}</span>
                     </div>
                     <i data-lucide="trash-2" class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 hover:text-red-400 shrink-0 ml-2" onclick="deleteFile(event, '${filename}')" title="Delete File"></i>
                 `;
@@ -380,7 +975,7 @@ console.log("Ready!");`
             openFiles.forEach(filename => {
                 const file = fileSystem[filename];
                 const isActive = filename === currentFile;
-                
+
                 const tab = document.createElement('div');
                 tab.className = `flex items-center h-[35px] px-3 cursor-pointer border-r border-[#2b2b2b] shrink-0 group transition-colors ${isActive ? 'tab-active' : 'tab-inactive'}`;
                 tab.onclick = () => switchFile(filename);
@@ -395,7 +990,7 @@ console.log("Ready!");`
                 tabsContainer.appendChild(tab);
             });
             lucide.createIcons();
-            
+
             // Handle Empty State
             const wrapper = document.getElementById('editor-wrapper');
             if (openFiles.length === 0) {
@@ -409,20 +1004,59 @@ console.log("Ready!");`
         function updateBreadcrumbsAndStatus() {
             if (!currentFile) return;
             const file = fileSystem[currentFile];
-            
+
             const iconContainer = document.getElementById('breadcrumb-icon');
             iconContainer.innerHTML = `<i data-lucide="${file.lucideIcon}" class="w-3.5 h-3.5 ${file.iconColor}"></i>`;
             document.getElementById('breadcrumb-filename').innerText = currentFile;
-            
+
             const langName = file.language.charAt(0).toUpperCase() + file.language.slice(1);
             document.getElementById('status-language').innerText = langName;
-            
+
+            // Show/Hide Preview Action
+            const previewAction = document.getElementById('action-preview');
+            if (file.language === 'html' || file.language === 'markdown') {
+                previewAction.classList.remove('hidden');
+            } else {
+                previewAction.classList.add('hidden');
+                if (isPreviewOpen) togglePreview(); // Auto close if switched to non-previewable
+            }
+
+            lucide.createIcons();
+        }
+
+        function toggleBreadcrumbMenu(event, type) {
+            event.stopPropagation();
+            const rect = event.currentTarget.getBoundingClientRect();
+            const dropdown = document.getElementById('menu-dropdown');
+            dropdown.innerHTML = '';
+
+            const folderName = Object.keys(fileHandles).length > 0 ? "LOCAL PROJECT" : "VSCODE-CLONE";
+            const items = type === 'root'
+                ? [{ label: `${folderName} (Project)`, action: () => { }, icon: 'folder' }]
+                : Object.keys(fileSystem).map(name => ({
+                    label: name,
+                    icon: fileSystem[name].lucideIcon,
+                    color: fileSystem[name].iconColor,
+                    action: () => switchFile(name)
+                }));
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center px-4 py-1.5 hover:bg-[#0060c0] hover:text-white cursor-pointer';
+                div.onclick = () => { item.action(); closeMenu(); };
+                div.innerHTML = `<i data-lucide="${item.icon || 'file'}" class="w-3.5 h-3.5 mr-2 ${item.color || ''}"></i><span>${item.label}</span>`;
+                dropdown.appendChild(div);
+            });
+
+            dropdown.style.left = `${rect.left}px`;
+            dropdown.style.top = `${rect.bottom}px`;
+            dropdown.classList.remove('hidden');
             lucide.createIcons();
         }
 
         // Functional Actions
         function createNewFile() {
-            const name = prompt("Enter file name with extension (e.g., script.js, style.css, doc.txt):");
+            const name = prompt("Enter file name:");
             if (!name || name.trim() === '') return;
             if (fileSystem[name]) {
                 alert("File already exists!");
@@ -430,30 +1064,42 @@ console.log("Ready!");`
             }
 
             const ext = name.split('.').pop().toLowerCase();
-            const langMap = { js: 'javascript', html: 'html', css: 'css', md: 'markdown', txt: 'plaintext', json: 'json', ts: 'typescript' };
-            const icons = { js: 'file-code-2', html: 'file-code', css: 'file-json-2', md: 'file-text', txt: 'file', json: 'file-json', ts: 'file-code-2' };
-            const colors = { js: 'text-[#f1e05a]', html: 'text-[#e34c26]', css: 'text-[#3b82f6]', md: 'text-[#4ade80]', txt: 'text-[#cccccc]', json: 'text-[#fbc02d]', ts: 'text-[#3178c6]' };
+            const config = getFileConfig(ext);
 
             fileSystem[name] = {
-                language: langMap[ext] || 'plaintext',
-                iconColor: colors[ext] || 'text-[#cccccc]',
-                lucideIcon: icons[ext] || 'file',
+                language: config.language,
+                iconColor: config.iconColor,
+                lucideIcon: config.lucideIcon,
                 content: ''
             };
 
+            saveState();
             switchFile(name);
+        }
+
+        function getFileConfig(ext) {
+            const langMap = { js: 'javascript', html: 'html', css: 'css', md: 'markdown', py: 'python', json: 'json', ts: 'typescript' };
+            const icons = { js: 'file-code-2', html: 'file-code', css: 'file-json-2', md: 'file-text', py: 'file-code-2', json: 'file-json', ts: 'file-code-2' };
+            const colors = { js: 'text-[#f1e05a]', html: 'text-[#e34c26]', css: 'text-[#3b82f6]', md: 'text-[#4ade80]', py: 'text-[#3572a5]', json: 'text-[#fbc02d]', ts: 'text-[#3178c6]' };
+
+            return {
+                language: langMap[ext] || 'plaintext',
+                lucideIcon: icons[ext] || 'file',
+                iconColor: colors[ext] || 'text-[#cccccc]'
+            };
         }
 
         function deleteFile(event, filename) {
             event.stopPropagation();
-            if(confirm(`Are you sure you want to delete '${filename}'?`)) {
+            if (confirm(`Are you sure you want to delete '${filename}'?`)) {
                 delete fileSystem[filename];
+                saveState();
                 closeTab(event, filename); // This re-renders everything
             }
         }
 
         function downloadCurrentFile() {
-            if(!currentFile || !fileSystem[currentFile]) return;
+            if (!currentFile || !fileSystem[currentFile]) return;
             const content = fileSystem[currentFile].content;
             const blob = new Blob([content], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
@@ -464,65 +1110,24 @@ console.log("Ready!");`
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
-            const term = document.getElementById('terminal-output');
-            term.innerHTML += `<div class="text-[#4ade80]">> Downloaded ${currentFile}</div>`;
+
             showTerminal();
+            if (terminal) terminal.writeln(`\x1b[1;32m>> Downloaded ${currentFile}\x1b[0m`);
         }
 
         function runCode() {
-            if(!currentFile || !fileSystem[currentFile]) return;
+            if (!currentFile || !fileSystem[currentFile]) return;
             const file = fileSystem[currentFile];
 
+            showTerminal();
             if (file.language === 'javascript') {
-                showTerminal();
-                const term = document.getElementById('terminal-output');
-                term.innerHTML += `<div class="text-[#007acc] mt-2">> node ${currentFile}</div>`;
-                
-                // Override console.log
-                const originalLog = console.log;
-                const originalError = console.error;
-                
-                console.log = (...args) => {
-                    const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ');
-                    term.innerHTML += `<div>${msg}</div>`;
-                    originalLog(...args);
-                };
-                console.error = (...args) => {
-                    const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ');
-                    term.innerHTML += `<div class="text-[#f48771]">${msg}</div>`;
-                    originalError(...args);
-                };
-
-                try {
-                    // Create a safe-ish function scope to execute
-                    const execFunction = new Function(file.content);
-                    execFunction();
-                } catch (e) {
-                    term.innerHTML += `<div class="text-[#f48771]">${e.toString()}</div>`;
-                }
-
-                // Restore
-                console.log = originalLog;
-                console.error = originalError;
-                
-                // Scroll to bottom
-                term.scrollTop = term.scrollHeight;
-
+                handleCommand(`node ${currentFile}`);
+            } else if (file.language === 'python') {
+                handleCommand(`python ${currentFile}`);
             } else if (file.language === 'html') {
-                // Open HTML in a new popup window
-                const newWindow = window.open('', '_blank');
-                if(newWindow) {
-                    newWindow.document.write(file.content);
-                    newWindow.document.close();
-                } else {
-                    alert("Popup blocked! Allow popups to preview HTML.");
-                }
+                togglePreview();
             } else {
-                showTerminal();
-                const term = document.getElementById('terminal-output');
-                term.innerHTML += `<div class="text-[#fbc02d] mt-2">> Execution not supported for ${file.language} files. Try running a JS or HTML file.</div>`;
-                term.scrollTop = term.scrollHeight;
+                if (terminal) terminal.writeln(`\x1b[1;33mExecution not supported for ${file.language} files.\x1b[0m`);
             }
         }
 
@@ -530,13 +1135,14 @@ console.log("Ready!");`
         function switchFile(filename) {
             if (!fileSystem[filename]) return;
             if (!openFiles.includes(filename)) openFiles.push(filename);
-            
+
             currentFile = filename;
-            
+
+            saveState();
             renderFileTree();
             renderTabs();
             updateBreadcrumbsAndStatus();
-            
+
             if (editorInstance) {
                 const model = editorInstance.getModel();
                 monaco.editor.setModelLanguage(model, fileSystem[filename].language);
@@ -545,28 +1151,38 @@ console.log("Ready!");`
         }
 
         function closeTab(event, filename) {
-            if(event) event.stopPropagation();
+            if (event) event.stopPropagation();
             openFiles = openFiles.filter(f => f !== filename);
-            
+
             if (openFiles.length === 0) {
                 currentFile = null;
+                saveState();
                 renderFileTree();
                 renderTabs();
             } else if (currentFile === filename) {
                 switchFile(openFiles[openFiles.length - 1]);
             } else {
+                saveState();
                 renderTabs();
             }
         }
 
         function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
+            const container = document.getElementById('sidebar-container');
             isSidebarOpen = !isSidebarOpen;
-            
-            sidebar.style.width = isSidebarOpen ? '250px' : '0px';
-            sidebar.style.borderRightWidth = isSidebarOpen ? '1px' : '0px';
 
-            setTimeout(() => { if (editorInstance) editorInstance.layout(); }, 160);
+            if (isSidebarOpen) {
+                container.classList.remove('hidden');
+                container.classList.add('flex');
+            } else {
+                container.classList.add('hidden');
+                container.classList.remove('flex');
+            }
+
+            setTimeout(() => { 
+                if (editorInstance) editorInstance.layout(); 
+                if (fitAddon) fitAddon.fit();
+            }, 10);
         }
 
         function toggleFolder() {
@@ -575,63 +1191,744 @@ console.log("Ready!");`
             renderFileTree();
         }
 
+        let vSplit = null;
+
         function toggleTerminal() {
             const panel = document.getElementById('terminal-panel');
             isTerminalOpen = !isTerminalOpen;
+            
             if (isTerminalOpen) {
                 panel.classList.remove('hidden');
                 panel.classList.add('flex');
+                initTerminal();
+                
+                // Initialize vertical split if not exists
+                if (!vSplit) {
+                    vSplit = Split(['#upper-split', '#terminal-panel'], {
+                        direction: 'vertical',
+                        sizes: [70, 30],
+                        minSize: [100, 35],
+                        gutterSize: 4,
+                        onDrag: () => { 
+                            if (editorInstance) editorInstance.layout();
+                            if (fitAddon) fitAddon.fit();
+                        }
+                    });
+                }
+                setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 10);
             } else {
                 panel.classList.add('hidden');
                 panel.classList.remove('flex');
+                if (vSplit) {
+                    vSplit.destroy();
+                    vSplit = null;
+                }
             }
             setTimeout(() => { if (editorInstance) editorInstance.layout(); }, 10);
         }
 
         function showTerminal() {
-            if(!isTerminalOpen) toggleTerminal();
+            if (!isTerminalOpen) toggleTerminal();
         }
 
         function clearTerminal() {
             document.getElementById('terminal-output').innerHTML = '<div class="text-[#007acc]">Terminal Cleared</div>';
         }
 
+        async function loadExtension() {
+            const url = prompt("Enter Extension URL (.js):");
+            if (!url) return;
+            
+            showTerminal();
+            if (terminal) terminal.writeln(`\x1b[1;36m>> Loading extension from ${url}...\x1b[0m`);
+            
+            try {
+                const response = await fetch(url);
+                const code = await response.text();
+                const script = document.createElement('script');
+                script.textContent = `(function() { ${code} })();`;
+                document.body.appendChild(script);
+                if (terminal) terminal.writeln(`\x1b[1;32m>> Extension loaded successfully!\x1b[0m`);
+                SoundEngine.play('pop');
+            } catch (err) {
+                if (terminal) terminal.writeln(`\x1b[1;31mError loading extension: ${err.message}\x1b[0m`);
+                SoundEngine.play('error');
+            }
+            if (terminal) terminal.write(PROMPT);
+        }
+
+        let fileHandles = {}; // Store local file handles
+
+        async function openFolder() {
+            try {
+                const dirHandle = await window.showDirectoryPicker();
+                showTerminal();
+                if (terminal) terminal.writeln(`\x1b[1;36m>> Opening folder: ${dirHandle.name}...\x1b[0m`);
+                
+                // Clear current virtual filesystem for the new folder
+                fileSystem = {};
+                fileHandles = {};
+                openFiles = [];
+                currentFile = null;
+
+                await scanDirectory(dirHandle, "");
+                
+                renderFileTree();
+                renderTabs();
+                SoundEngine.play('pop');
+                term.innerHTML += `<div class="text-[#4ade80]">>> Folder opened and indexed!</div>`;
+            } catch (err) {
+                console.error(err);
+                SoundEngine.play('error');
+            }
+        }
+
+        async function scanDirectory(dirHandle, path) {
+            for await (const entry of dirHandle.values()) {
+                const fullPath = path ? `${path}/${entry.name}` : entry.name;
+                if (entry.kind === 'file') {
+                    const file = await entry.getFile();
+                    const content = await file.text();
+                    const ext = entry.name.split('.').pop().toLowerCase();
+                    const config = getFileConfig(ext);
+                    
+                    fileSystem[fullPath] = {
+                        language: config.language,
+                        iconColor: config.iconColor,
+                        lucideIcon: config.lucideIcon,
+                        content: content
+                    };
+                    fileHandles[fullPath] = entry; // Save handle for syncing
+                } else if (entry.kind === 'directory') {
+                    // Visual directories aren't fully supported in our flat fileSystem yet,
+                    // but we can scan their files.
+                    await scanDirectory(entry, fullPath);
+                }
+            }
+        }
+
+        async function syncFileToDisk(filename) {
+            const handle = fileHandles[filename];
+            if (!handle) return;
+            
+            try {
+                const writable = await handle.createWritable();
+                await writable.write(fileSystem[filename].content);
+                await writable.close();
+                console.log(`Synced ${filename} to disk`);
+            } catch (err) {
+                console.error("Failed to sync to disk:", err);
+            }
+        }
+
+        function switchSidebarTab(tabId) {
+            const explorer = document.getElementById('tab-explorer');
+            const search = document.getElementById('tab-search');
+            const explorerIcon = document.getElementById('activity-explorer');
+            const searchIcon = document.getElementById('activity-search');
+
+            explorer.classList.add('hidden');
+            search.classList.add('hidden');
+            explorerIcon.classList.remove('activity-item-active');
+            searchIcon.classList.remove('activity-item-active');
+
+            if (tabId === 'explorer') {
+                explorer.classList.remove('hidden');
+                explorerIcon.classList.add('activity-item-active');
+            } else {
+                search.classList.remove('hidden');
+                searchIcon.classList.add('activity-item-active');
+                document.getElementById('global-search-input').focus();
+            }
+        }
+
+        // Global Search Logic
+        document.getElementById('global-search-input').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const results = document.getElementById('search-results');
+            results.innerHTML = '';
+
+            if (!query) {
+                results.innerHTML = '<div class="py-2 italic">Search in files...</div>';
+                return;
+            }
+
+            let found = false;
+            Object.keys(fileSystem).forEach(filename => {
+                const content = fileSystem[filename].content.toLowerCase();
+                const lines = content.split('\n');
+                let fileMatches = [];
+
+                lines.forEach((line, index) => {
+                    if (line.includes(query)) {
+                        fileMatches.push({ text: line.trim(), line: index + 1 });
+                    }
+                });
+
+                if (fileMatches.length > 0) {
+                    found = true;
+                    const fileDiv = document.createElement('div');
+                    fileDiv.className = 'py-2';
+                    fileDiv.innerHTML = `
+                        <div class="flex items-center text-[#cccccc] font-bold cursor-pointer hover:bg-[rgba(255,255,255,0.05)]" onclick="switchFile('${filename}')">
+                            <i data-lucide="${fileSystem[filename].lucideIcon}" class="w-3.5 h-3.5 mr-1 ${fileSystem[filename].iconColor}"></i>
+                            ${filename}
+                        </div>
+                        <div class="pl-4">
+                            ${fileMatches.map(m => `
+                                <div class="cursor-pointer hover:text-white truncate py-0.5" onclick="jumpToLine('${filename}', ${m.line})">
+                                    <span class="text-[#858585] mr-2">${m.line}</span> ${m.text.replace(new RegExp(query, 'gi'), match => `<mark class="bg-[#613214] text-white">${match}</mark>`)}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    results.appendChild(fileDiv);
+                }
+            });
+
+            if (!found) results.innerHTML = '<div class="py-2 italic">No results found.</div>';
+            lucide.createIcons();
+        });
+
+        function jumpToLine(filename, line) {
+            switchFile(filename);
+            setTimeout(() => {
+                if (editorInstance) {
+                    editorInstance.revealLineInCenter(line);
+                    editorInstance.setPosition({ lineNumber: line, column: 1 });
+                    editorInstance.focus();
+                }
+            }, 100);
+        }
+
+        // Drag and Drop support
+        function dragOverHandler(ev) {
+            ev.preventDefault();
+            ev.dataTransfer.dropEffect = 'copy';
+        }
+
+        function dropHandler(ev) {
+            ev.preventDefault();
+            const files = ev.dataTransfer.files;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target.result;
+                    const name = file.name;
+                    const ext = name.split('.').pop().toLowerCase();
+                    const config = getFileConfig(ext);
+
+                    fileSystem[name] = {
+                        language: config.language,
+                        iconColor: config.iconColor,
+                        lucideIcon: config.lucideIcon,
+                        content: content
+                    };
+                    saveState();
+                    renderFileTree();
+                    switchFile(name);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // Tooling Logic
+        async function formatDocument() {
+            if (!editorInstance || !currentFile) return;
+            const file = fileSystem[currentFile];
+            const content = editorInstance.getValue();
+
+            let formatted = content;
+            try {
+                if (file.language === 'javascript') {
+                    formatted = prettier.format(content, { parser: "babel", plugins: prettierPlugins });
+                } else if (file.language === 'html') {
+                    formatted = prettier.format(content, { parser: "html", plugins: prettierPlugins });
+                } else if (file.language === 'css') {
+                    formatted = prettier.format(content, { parser: "css", plugins: prettierPlugins });
+                }
+
+                if (formatted !== content) {
+                    editorInstance.setValue(formatted);
+                    // Update status bar for a moment
+                    const statusText = document.querySelector('.status-bar-info'); // Need to ID it
+                    // I'll just change the Prettier text
+                    const prettierItem = document.getElementById('status-prettier');
+                    if (prettierItem) {
+                        prettierItem.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5 mr-1 text-green-400"></i> Formatted';
+                        lucide.createIcons();
+                        setTimeout(() => {
+                            prettierItem.innerHTML = '<i data-lucide="check-check" class="w-3.5 h-3.5 mr-1"></i> Prettier';
+                            lucide.createIcons();
+                        }, 2000);
+                    }
+                }
+                } catch (e) {
+                    console.error("Formatting error:", e);
+                    showTerminal();
+                    if (terminal) terminal.writeln(`\x1b[1;31mFormatting Error: ${e.message}\x1b[0m`);
+                    SoundEngine.play('error');
+                }
+        }
+
+        async function exportToZip() {
+            const zip = new JSZip();
+            Object.keys(fileSystem).forEach(name => {
+                zip.file(name, fileSystem[name].content);
+            });
+            const content = await zip.generateAsync({ type: "blob" });
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "vscode-workspace.zip";
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showTerminal();
+            if (terminal) terminal.writeln(`\x1b[1;32m>> Workspace exported to ZIP successfully!\x1b[0m`);
+            if (terminal) terminal.write(PROMPT);
+        }
+
+        let pyodide = null;
+        async function runPython() {
+            if (!currentFile || !fileSystem[currentFile]) return;
+            showTerminal();
+            handleCommand(`python ${currentFile}`);
+        }
+
+        async function cloneGitHubRepo() {
+            const url = prompt("Enter GitHub Repo URL (e.g., https://github.com/user/repo):");
+            if (!url) return;
+            
+            const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
+            if (!match) {
+                alert("Invalid GitHub URL!");
+                return;
+            }
+            
+            const [_, user, repo] = match;
+            showTerminal();
+            if (terminal) terminal.writeln(`\x1b[1;36m>> Cloning ${user}/${repo}...\x1b[0m`);
+            
+            try {
+                const response = await fetch(`https://api.github.com/repos/${user}/${repo}/contents`);
+                const contents = await response.json();
+                
+                if (Array.isArray(contents)) {
+                    for (const item of contents) {
+                        if (item.type === 'file') {
+                            const fileResp = await fetch(item.download_url);
+                            const text = await fileResp.text();
+                            const ext = item.name.split('.').pop().toLowerCase();
+                            const config = getFileConfig(ext);
+                            
+                            fileSystem[item.name] = {
+                                language: config.language,
+                                iconColor: config.iconColor,
+                                lucideIcon: config.lucideIcon,
+                                content: text
+                            };
+                        }
+                    }
+                    saveState();
+                    renderFileTree();
+                    if (terminal) terminal.writeln(`\x1b[1;32m>> Cloned ${contents.length} items from GitHub!\x1b[0m`);
+                }
+            } catch (err) {
+                term.innerHTML += `<div class="text-[#f48771]">Error cloning: ${err.message}</div>`;
+            }
+        }
+
+        function openBrowserTab() {
+            const url = prompt("Enter URL:", "https://bing.com");
+            if (!url) return;
+            
+            const tabName = `Browser: ${url.split('//')[1] || url}`;
+            fileSystem[tabName] = {
+                language: 'html',
+                iconColor: 'text-[#3b82f6]',
+                lucideIcon: 'globe',
+                content: `<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`,
+                isSpecial: true
+            };
+            switchFile(tabName);
+        }
+
+        function clearTerminal() {
+            terminalSessions[activeTerminalId].content = '';
+            renderTerminal();
+        }
+
+        function addTerminal() {
+            const id = nextTerminalId++;
+            terminalSessions[id] = { id, name: 'bash', content: `<div class="text-[#007acc]">VS Code Clone Terminal - Session ${id}</div>` };
+            activeTerminalId = id;
+            renderTerminalTabs();
+            renderTerminal();
+        }
+
+        function switchTerminal(id) {
+            activeTerminalId = id;
+            renderTerminalTabs();
+            renderTerminal();
+        }
+
+        function renderTerminalTabs() {
+            const container = document.getElementById('terminal-tab-container');
+            container.innerHTML = Object.values(terminalSessions).map(s => `
+                <span class="cursor-pointer hover:text-white pb-2 border-b-2 ${s.id === activeTerminalId ? 'border-[#007acc] text-white' : 'border-transparent'} truncate-text" style="max-width: 150px;" onclick="switchTerminal(${s.id})">TERMINAL (${s.name} ${s.id})</span>
+            `).join('');
+        }
+
+        function renderTerminal() {
+            const output = document.getElementById('terminal-output');
+            output.innerHTML = terminalSessions[activeTerminalId].content;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function writeToTerminal(text) {
+            terminalSessions[activeTerminalId].content += `<div>${text}</div>`;
+            renderTerminal();
+        }
+
+        // Preview Logic
+        let previewSplit = null;
+        function togglePreview() {
+            isPreviewOpen = !isPreviewOpen;
+            const pane = document.getElementById('preview-pane');
+
+            if (isPreviewOpen) {
+                pane.classList.remove('hidden');
+                updatePreview();
+                
+                // Initialize Split.js for the preview if not already done
+                if (!previewSplit) {
+                    previewSplit = Split(['#editor-pane', '#preview-pane'], {
+                        sizes: [50, 50],
+                        minSize: [200, 200],
+                        gutterSize: 4,
+                        onDrag: () => { if (editorInstance) editorInstance.layout(); }
+                    });
+                }
+            } else {
+                pane.classList.add('hidden');
+                if (previewSplit) {
+                    previewSplit.destroy();
+                    previewSplit = null;
+                }
+                // Reset editor pane width
+                document.getElementById('editor-pane').style.width = '100%';
+            }
+
+            setTimeout(() => { if (editorInstance) editorInstance.layout(); }, 10);
+        }
+
+        function updatePreview() {
+            if (!isPreviewOpen || !currentFile) return;
+            const file = fileSystem[currentFile];
+            const content = editorInstance ? editorInstance.getValue() : file.content;
+            const container = document.getElementById('preview-content');
+
+            if (file.language === 'html') {
+                container.innerHTML = `<iframe id="html-preview" style="width:100%; height:100%; border:none; background:white;"></iframe>`;
+                const iframe = document.getElementById('html-preview');
+                const doc = iframe.contentDocument || iframe.contentWindow.document;
+                doc.open();
+                doc.write(content);
+                doc.close();
+                document.getElementById('preview-pane').style.backgroundColor = 'white';
+            } else if (file.language === 'markdown') {
+                container.innerHTML = `<div class="prose max-w-none text-black">${marked.parse(content)}</div>`;
+                document.getElementById('preview-pane').style.backgroundColor = 'white';
+            }
+        }
+
+        // Theme & Accent Logic
+        function toggleTheme() {
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+            saveState();
+        }
+
+        function applyTheme(theme) {
+            currentTheme = theme;
+            const root = document.documentElement;
+            if (theme === 'light') {
+                root.classList.add('theme-light');
+            } else {
+                root.classList.remove('theme-light');
+            }
+
+            if (editorInstance) {
+                monaco.editor.setTheme(theme === 'light' ? 'vs' : 'vscode-clone-dark');
+            }
+        }
+
+        function applyAccent(color) {
+            currentAccent = color;
+            document.documentElement.style.setProperty('--accent', color);
+            document.documentElement.style.setProperty('--bg-statusbar', color);
+            saveState();
+        }
+
+        // Command Palette Logic
+        function openCommandPalette(commandsMode = true) {
+            const palette = document.getElementById('command-palette');
+            const input = document.getElementById('palette-input');
+            const prefix = document.getElementById('palette-prefix');
+
+            isPaletteCommandsMode = commandsMode;
+            prefix.innerText = commandsMode ? '>' : '';
+            input.value = '';
+            palette.classList.remove('hidden');
+            input.focus();
+
+            updatePaletteResults('');
+        }
+
+        function closeCommandPalette() {
+            document.getElementById('command-palette').classList.add('hidden');
+            if (editorInstance) editorInstance.focus();
+        }
+
+        function updatePaletteResults(query) {
+            const resultsContainer = document.getElementById('palette-results');
+            resultsContainer.innerHTML = '';
+
+            let filtered = [];
+            if (isPaletteCommandsMode) {
+                filtered = globalCommands.filter(cmd => cmd.label.toLowerCase().includes(query.toLowerCase()));
+            } else {
+                filtered = Object.keys(fileSystem)
+                    .filter(name => name.toLowerCase().includes(query.toLowerCase()))
+                    .map(name => ({ label: name, isFile: true }));
+            }
+
+            paletteItems = filtered;
+            selectedPaletteIndex = 0;
+
+            filtered.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-[#2a2d2e] ${index === 0 ? 'bg-[#04395e] text-white' : 'text-[#cccccc]'}`;
+                div.onclick = () => executePaletteItem(item);
+
+                let icon = item.isFile ? (fileSystem[item.label].lucideIcon || 'file') : 'terminal';
+                let iconColor = item.isFile ? (fileSystem[item.label].iconColor || '') : 'text-[#007acc]';
+
+                div.innerHTML = `
+                    <div class="flex items-center">
+                        <i data-lucide="${icon}" class="w-4 h-4 mr-2 ${iconColor}"></i>
+                        <span>${item.label}</span>
+                    </div>
+                `;
+                resultsContainer.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function executePaletteItem(item) {
+            closeCommandPalette();
+            if (item.isFile) {
+                switchFile(item.label);
+            } else if (item.action) {
+                item.action();
+            }
+        }
+
+        function toggleOutline() {
+            const container = document.getElementById('outline-container');
+            const chevron = document.getElementById('outline-chevron');
+            const isHidden = container.classList.contains('hidden');
+            if (isHidden) {
+                container.classList.remove('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+                refreshOutline();
+            } else {
+                container.classList.add('hidden');
+                chevron.style.transform = 'rotate(-90deg)';
+            }
+        }
+
+        function refreshOutline() {
+            const container = document.getElementById('outline-container');
+            if (!container || container.classList.contains('hidden') || !currentFile) return;
+
+            const content = fileSystem[currentFile].content;
+            const lang = fileSystem[currentFile].language;
+            container.innerHTML = '';
+
+            let symbols = [];
+            const lines = content.split('\n');
+
+            if (lang === 'javascript') {
+                lines.forEach((line, i) => {
+                    // Match: function name(), class Name, const/let/var name = ...
+                    const funcMatch = line.match(/(?:function\s+([a-zA-Z0-9_$]+)|([a-zA-Z0-9_$]+)\s*=\s*(?:function|\([^)]*\)\s*=>)|class\s+([a-zA-Z0-9_$]+))/);
+                    if (funcMatch) {
+                        const name = funcMatch[1] || funcMatch[2] || funcMatch[3];
+                        symbols.push({ name, line: i + 1, icon: funcMatch[3] ? 'box' : 'function' });
+                    }
+                });
+            } else if (lang === 'html') {
+                lines.forEach((line, i) => {
+                    const idMatch = line.match(/id=["']([^"']+)["']/);
+                    if (idMatch) {
+                        symbols.push({ name: '#' + idMatch[1], line: i + 1, icon: 'tag' });
+                    }
+                });
+            } else if (lang === 'css') {
+                lines.forEach((line, i) => {
+                    const classMatch = line.match(/([.#][a-zA-Z0-9_-]+)\s*\{/);
+                    if (classMatch) {
+                        symbols.push({ name: classMatch[1], line: i + 1, icon: 'hash' });
+                    }
+                });
+            }
+
+            if (symbols.length === 0) {
+                container.innerHTML = '<div class="px-6 py-2 italic text-[11px]">No symbols found...</div>';
+                return;
+            }
+
+            symbols.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center px-6 py-1 cursor-pointer hover:bg-[rgba(255,255,255,0.05)] hover:text-white min-w-0';
+                div.onclick = () => jumpToLine(currentFile, s.line);
+                div.innerHTML = `<i data-lucide="${s.icon}" class="w-3.5 h-3.5 mr-2 opacity-70 shrink-0"></i><span class="truncate-text">${s.name}</span>`;
+                container.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        document.getElementById('palette-input').addEventListener('input', (e) => {
+            let val = e.target.value;
+            if (val.startsWith('>')) {
+                isPaletteCommandsMode = true;
+                document.getElementById('palette-prefix').innerText = '>';
+                val = val.substring(1);
+            }
+            updatePaletteResults(val);
+        });
+
+        document.getElementById('palette-input').addEventListener('keydown', (e) => {
+            const items = document.getElementById('palette-results').children;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                items[selectedPaletteIndex].classList.remove('bg-[#04395e]', 'text-white');
+                items[selectedPaletteIndex].classList.add('text-[#cccccc]');
+                selectedPaletteIndex = (selectedPaletteIndex + 1) % paletteItems.length;
+                items[selectedPaletteIndex].classList.add('bg-[#04395e]', 'text-white');
+                items[selectedPaletteIndex].classList.remove('text-[#cccccc]');
+                items[selectedPaletteIndex].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                items[selectedPaletteIndex].classList.remove('bg-[#04395e]', 'text-white');
+                items[selectedPaletteIndex].classList.add('text-[#cccccc]');
+                selectedPaletteIndex = (selectedPaletteIndex - 1 + paletteItems.length) % paletteItems.length;
+                items[selectedPaletteIndex].classList.add('bg-[#04395e]', 'text-white');
+                items[selectedPaletteIndex].classList.remove('text-[#cccccc]');
+                items[selectedPaletteIndex].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                if (paletteItems[selectedPaletteIndex]) {
+                    executePaletteItem(paletteItems[selectedPaletteIndex]);
+                }
+            } else if (e.key === 'Escape') {
+                closeCommandPalette();
+            }
+        });
+
+        // Global Keyboard Shortcuts
+        window.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    openCommandPalette(true);
+                } else {
+                    e.preventDefault();
+                    openCommandPalette(false);
+                }
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                e.preventDefault();
+                toggleSidebar();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === '`') {
+                e.preventDefault();
+                toggleTerminal();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                // Secondary trigger for Zen Mode (Ctrl+K then Z)
+                const zenShortcutListener = (ee) => {
+                    if (ee.key === 'z') {
+                        ee.preventDefault();
+                        toggleZenMode();
+                        window.removeEventListener('keydown', zenShortcutListener);
+                    }
+                };
+                window.addEventListener('keydown', zenShortcutListener, { once: true });
+                // Remove listener after a timeout if Z isn't pressed
+                setTimeout(() => window.removeEventListener('keydown', zenShortcutListener), 2000);
+            }
+        });
+
         // Top Menu Dropdown System
         const topMenus = {
             'File': [
                 { label: 'New File', action: createNewFile, shortcut: 'Ctrl+N' },
+                { label: 'Open Folder...', action: openFolder, shortcut: 'Ctrl+O' },
                 { label: 'Download Current File', action: downloadCurrentFile, shortcut: 'Ctrl+S' },
                 { divider: true },
-                { label: 'Close Editor', action: () => { if(currentFile) closeTab(new Event('click'), currentFile) }, shortcut: 'Ctrl+W' }
+                { label: 'Close Editor', action: () => { if (currentFile) closeTab(new Event('click'), currentFile) }, shortcut: 'Ctrl+W' }
             ],
             'Edit': [
                 { label: 'Undo', action: () => editorInstance && editorInstance.trigger('keyboard', 'undo'), shortcut: 'Ctrl+Z' },
                 { label: 'Redo', action: () => editorInstance && editorInstance.trigger('keyboard', 'redo'), shortcut: 'Ctrl+Y' },
                 { divider: true },
-                { label: 'Cut', action: () => { document.execCommand('cut'); if(editorInstance) editorInstance.focus(); }, shortcut: 'Ctrl+X' },
-                { label: 'Copy', action: () => { document.execCommand('copy'); if(editorInstance) editorInstance.focus(); }, shortcut: 'Ctrl+C' },
-                { label: 'Paste', action: () => { document.execCommand('paste'); if(editorInstance) editorInstance.focus(); }, shortcut: 'Ctrl+V' }
+                { label: 'Cut', action: () => { document.execCommand('cut'); if (editorInstance) editorInstance.focus(); }, shortcut: 'Ctrl+X' },
+                { label: 'Copy', action: () => { document.execCommand('copy'); if (editorInstance) editorInstance.focus(); }, shortcut: 'Ctrl+C' },
+                { label: 'Paste', action: () => { document.execCommand('paste'); if (editorInstance) editorInstance.focus(); }, shortcut: 'Ctrl+V' },
+                { divider: true },
+                { label: 'Format Document', action: formatDocument, shortcut: 'Alt+Shift+F' }
             ],
             'Selection': [
                 { label: 'Select All', action: () => editorInstance && editorInstance.setSelection(editorInstance.getModel().getFullModelRange()), shortcut: 'Ctrl+A' }
             ],
+            'Browser': [
+                { label: 'Open Browser Tab', action: openBrowserTab }
+            ],
             'View': [
                 { label: 'Toggle Side Bar', action: toggleSidebar, shortcut: 'Ctrl+B' },
                 { label: 'Toggle Terminal', action: toggleTerminal, shortcut: 'Ctrl+`' },
+                { label: 'Zen Mode', action: toggleZenMode, shortcut: 'Ctrl+K Z' },
                 { divider: true },
-                { label: 'Toggle Word Wrap', action: () => {
-                    if(editorInstance) {
-                        const currentWrap = editorInstance.getOption(monaco.editor.EditorOption.wordWrap);
-                        editorInstance.updateOptions({ wordWrap: currentWrap === 'on' ? 'off' : 'on' });
-                    }
-                }, shortcut: 'Alt+Z' }
+                { label: 'Load Extension', action: loadExtension },
+                { divider: true },
+                {
+                    label: 'Toggle Word Wrap', action: () => {
+                        if (editorInstance) {
+                            const currentWrap = editorInstance.getOption(monaco.editor.EditorOption.wordWrap);
+                            editorInstance.updateOptions({ wordWrap: currentWrap === 'on' ? 'off' : 'on' });
+                        }
+                    }, shortcut: 'Alt+Z'
+                }
             ],
             'Run': [
-                { label: 'Run Code', action: runCode, shortcut: 'F5' }
+                { label: 'Run Code (JS/HTML)', action: runCode, shortcut: 'F5' },
+                { label: 'Run Python (Pyodide)', action: runPython },
+                { label: 'Toggle Vim Mode', action: toggleVimMode }
             ],
             'Terminal': [
                 { label: 'New Terminal', action: showTerminal, shortcut: 'Ctrl+Shift+`' },
-                { label: 'Clear Terminal', action: clearTerminal }
+                { label: 'Clear Terminal', action: clearTerminal },
+                { divider: true },
+                { label: 'Clone GitHub Repo', action: cloneGitHubRepo }
+            ],
+            'Theme': [
+                { label: 'Toggle Dark/Light', action: toggleTheme },
+                { divider: true },
+                { label: 'Accent: Blue', action: () => applyAccent('#007acc') },
+                { label: 'Accent: Purple', action: () => applyAccent('#a855f7') },
+                { label: 'Accent: Orange', action: () => applyAccent('#f97316') },
+                { label: 'Accent: Green', action: () => applyAccent('#22c55e') },
+                { label: 'Accent: Red', action: () => applyAccent('#ef4444') }
             ],
             'Help': [
                 { label: 'About VS Code Clone', action: () => alert('VS Code Web Clone\nVersion 2.0.0\nBuilt with HTML, CSS, JS, and Monaco Editor.') }
@@ -656,17 +1953,17 @@ console.log("Ready!");`
 
         function openMenu(element, menuName) {
             activeMenu = menuName;
-            
+
             // Highlight active menu item in the top bar
             document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('menu-active'));
             element.classList.add('menu-active');
 
             const rect = element.getBoundingClientRect();
             const dropdown = document.getElementById('menu-dropdown');
-            
+
             dropdown.innerHTML = '';
             const items = topMenus[menuName] || [];
-            
+
             items.forEach(item => {
                 if (item.divider) {
                     const div = document.createElement('div');
@@ -681,25 +1978,44 @@ console.log("Ready!");`
                     closeMenu();
                     if (item.action) item.action();
                 };
-                
+
                 const labelSpan = document.createElement('span');
                 labelSpan.innerText = item.label;
                 div.appendChild(labelSpan);
-                
+
                 if (item.shortcut) {
                     const shortcutSpan = document.createElement('span');
                     shortcutSpan.className = 'ml-6 text-[#858585] group-hover:text-white text-[11px]';
                     shortcutSpan.innerText = item.shortcut;
                     div.appendChild(shortcutSpan);
                 }
-                
+
                 dropdown.appendChild(div);
             });
-            
+
             // Position exactly under the clicked menu item
             dropdown.style.left = `${rect.left}px`;
             dropdown.style.top = `${rect.bottom}px`;
             dropdown.classList.remove('hidden');
+        }
+
+        function toggleVimMode() {
+            if (!editorInstance) return;
+            isVimMode = !isVimMode;
+            const statusBarVim = document.getElementById('status-vim');
+
+            if (isVimMode) {
+                const terminal = document.getElementById('terminal-panel');
+                if (!isTerminalOpen) toggleTerminal();
+                vimModeInstance = window.MonacoVim.initVimMode(editorInstance, document.getElementById('terminal-output'));
+                statusBarVim.classList.remove('hidden');
+            } else {
+                if (vimModeInstance) {
+                    vimModeInstance.dispose();
+                    vimModeInstance = null;
+                }
+                statusBarVim.classList.add('hidden');
+            }
         }
 
         function closeMenu() {
@@ -712,9 +2028,9 @@ console.log("Ready!");`
         document.addEventListener('click', closeMenu);
 
         // Initialize Monaco
-        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
 
-        require(['vs/editor/editor.main'], function() {
+        require(['vs/editor/editor.main'], function () {
             // Setup custom VS Code Dark Theme overrides
             monaco.editor.defineTheme('vscode-clone-dark', {
                 base: 'vs-dark',
@@ -727,7 +2043,7 @@ console.log("Ready!");`
             });
 
             const initialFile = fileSystem[currentFile];
-            
+
             editorInstance = monaco.editor.create(document.getElementById('monaco-editor'), {
                 value: initialFile ? initialFile.content : '',
                 language: initialFile ? initialFile.language : 'plaintext',
@@ -744,25 +2060,102 @@ console.log("Ready!");`
                 cursorBlinking: "smooth"
             });
 
+            // Initial theme application to Monaco
+            monaco.editor.setTheme(currentTheme === 'light' ? 'vs' : 'vscode-clone-dark');
+
+            // Register Snippets
+            monaco.languages.registerCompletionItemProvider('javascript', {
+                provideCompletionItems: (model, position) => {
+                    const word = model.getWordUntilPosition(position);
+                    const range = {
+                        startLineNumber: position.lineNumber,
+                        endLineNumber: position.lineNumber,
+                        startColumn: word.startColumn,
+                        endColumn: word.endColumn
+                    };
+                    return {
+                        suggestions: userSnippets.map(s => ({
+                            label: s.label,
+                            kind: monaco.languages.CompletionItemKind.Snippet,
+                            insertText: s.insertText,
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: s.detail,
+                            range: range
+                        }))
+                    };
+                }
+            });
+
+            // Load some basic IntelliSense (TypeScript Definitions)
+            const commonTypes = `
+                declare interface Object { toString(): string; }
+                declare namespace React {
+                    function createElement(tag: string, props: any, ...children: any[]): void;
+                }
+                declare function console.log(...args: any[]): void;
+            `;
+            monaco.languages.typescript.javascriptDefaults.addExtraLib(commonTypes, 'lib.d.ts');
+
             editorInstance.onDidChangeCursorPosition((e) => {
                 document.getElementById('status-line-col').innerText = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
             });
 
             editorInstance.onDidChangeModelContent(() => {
-                if (currentFile) fileSystem[currentFile].content = editorInstance.getValue();
+                if (currentFile) {
+                    fileSystem[currentFile].content = editorInstance.getValue();
+                    saveState();
+                    if (fileHandles[currentFile]) syncFileToDisk(currentFile);
+                    if (isPreviewOpen) updatePreview();
+                    refreshOutline();
+                }
             });
-            
-            // Allow layout fixing on resize
-            window.addEventListener('resize', () => {
-                editorInstance.layout();
+
+            // Register Formatting Providers
+            monaco.languages.registerDocumentFormattingEditProvider('javascript', {
+                provideDocumentFormattingEdits(model) {
+                    try {
+                        const text = model.getValue();
+                        const formatted = prettier.format(text, { parser: "babel", plugins: prettierPlugins });
+                        return [{ range: model.getFullModelRange(), text: formatted }];
+                    } catch (e) { return []; }
+                }
             });
+            monaco.languages.registerDocumentFormattingEditProvider('html', {
+                provideDocumentFormattingEdits(model) {
+                    try {
+                        const text = model.getValue();
+                        const formatted = prettier.format(text, { parser: "html", plugins: prettierPlugins });
+                        return [{ range: model.getFullModelRange(), text: formatted }];
+                    } catch (e) { return []; }
+                }
+            });
+            monaco.languages.registerDocumentFormattingEditProvider('css', {
+                provideDocumentFormattingEdits(model) {
+                    try {
+                        const text = model.getValue();
+                        const formatted = prettier.format(text, { parser: "css", plugins: prettierPlugins });
+                        return [{ range: model.getFullModelRange(), text: formatted }];
+                    } catch (e) { return []; }
+                }
+            });
+
+            // Sidebar and Editor split (Horizontal)
+            Split(['#sidebar-container', '#editor-wrapper'], {
+                sizes: [20, 80],
+                minSize: [150, 200],
+                gutterSize: 2,
+                onDrag: () => { if (editorInstance) editorInstance.layout(); }
+            });
+
+            // Note: Vertical split for terminal is now handled in toggleTerminal()
         });
 
-        // First Mount
+        updateBreadcrumbsAndStatus();
         renderFileTree();
         renderTabs();
-        updateBreadcrumbsAndStatus();
+        refreshOutline();
 
     </script>
 </body>
+
 </html>
