@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Studio Code - Web</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Exact VS Code Scrollbars */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(121, 121, 121, 0.4);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 100, 100, 0.7);
+        }
+        ::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+
+        /* VS Code Theme Colors */
+        :root {
+            --bg-editor: #1e1e1e;
+            --bg-sidebar: #252526;
+            --bg-activity: #333333;
+            --bg-titlebar: #323233;
+            --bg-statusbar: #007acc;
+            --bg-tab-active: #1e1e1e;
+            --bg-tab-inactive: #2d2d2d;
+            --bg-hover: rgba(255, 255, 255, 0.1);
+            --bg-list-hover: #2a2d2e;
+            --bg-list-active: #37373d;
+            --text-main: #cccccc;
+            --text-muted: #969696;
+            --accent: #007acc;
+            --border-color: #2b2b2b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-editor);
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .monaco-editor-container {
+            position: absolute;
+            top: 0; bottom: 0; left: 0; right: 0;
+        }
+
+        /* Utilities */
+        .vscode-hover:hover { background-color: var(--bg-hover); color: white; }
+        .tab-active { background-color: var(--bg-tab-active); color: white; border-top: 1px solid var(--accent); }
+        .tab-inactive { background-color: var(--bg-tab-inactive); border-top: 1px solid transparent; }
+        .tab-inactive:hover { background-color: var(--bg-sidebar); }
+        
+        .file-active { background-color: var(--bg-list-active) !important; color: white; }
+        .file-hover:hover { background-color: var(--bg-list-hover); color: white; }
+
+        /* Empty Editor Watermark */
+        .editor-watermark {
+            display: none;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.05;
+            pointer-events: none;
+        }
+        .show-watermark .editor-watermark { display: block; }
+        .show-watermark .monaco-editor-container { display: none; }
+        .show-watermark #breadcrumbs { display: none; }
+        .show-watermark #editor-actions { display: none; }
+
+        .lucide { stroke-width: 1.5; }
+        
+        /* Terminal Styles */
+        #terminal-output div {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        /* Menu Dropdown Styles */
+        .menu-active { background-color: rgba(255, 255, 255, 0.1); color: white; }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col select-none text-[13px]">
+
+    <!-- Global Menu Dropdown Container -->
+    <div id="menu-dropdown" class="hidden absolute z-50 bg-[#252526] border border-[#454545] shadow-lg py-1 text-[#cccccc] text-[12px] min-w-[220px] rounded shadow-[0_4px_6px_rgba(0,0,0,0.3)]"></div>
+
+    <!-- Title Bar -->
+    <div class="h-[35px] w-full flex items-center justify-between px-2 text-[12px] border-b border-[#2b2b2b] z-20" style="background-color: var(--bg-titlebar);">
+        <div class="flex items-center gap-2 h-full w-1/3">
+            <div class="flex items-center justify-center text-[#007acc] w-[35px] h-full">
+                <svg viewBox="0 0 24 24" fill="currentColor" class="w-[18px] h-[18px]">
+                    <path d="M17.5 3l-6 5.5-3-2.5-4 3 13 11 6-5V3l-6 5.5z"/>
+                </svg>
+            </div>
+            <div class="hidden sm:flex items-center h-full text-[#cccccc]">
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'File')" onmouseenter="hoverMenu(event, 'File')">File</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Edit')" onmouseenter="hoverMenu(event, 'Edit')">Edit</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Selection')" onmouseenter="hoverMenu(event, 'Selection')">Selection</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'View')" onmouseenter="hoverMenu(event, 'View')">View</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Run')" onmouseenter="hoverMenu(event, 'Run')">Run</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Terminal')" onmouseenter="hoverMenu(event, 'Terminal')">Terminal</div>
+                <div class="px-2 py-1 rounded cursor-pointer menu-item hover:bg-[rgba(255,255,255,0.1)]" onclick="toggleMenu(event, 'Help')" onmouseenter="hoverMenu(event, 'Help')">Help</div>
+            </div>
+        </div>
+
+        <div class="flex justify-center w-1/3 h-full items-center">
+            <div class="flex items-center w-full max-w-[450px] h-[24px] bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.12)] border border-[rgba(255,255,255,0.1)] rounded-md px-3 cursor-pointer text-[#cccccc] transition-colors">
+                <i data-lucide="search" class="w-3.5 h-3.5 mr-2 text-[#858585]"></i>
+                <span class="flex-1 text-center text-[12px]">vscode-clone workspace</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-1 h-full w-1/3 pr-2 text-[#cccccc]">
+            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" onclick="toggleSidebar()"><i data-lucide="panel-left" class="w-4 h-4"></i></div>
+            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" onclick="toggleTerminal()"><i data-lucide="panel-bottom" class="w-4 h-4"></i></div>
+            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer"><i data-lucide="panel-right" class="w-4 h-4"></i></div>
+            <div class="p-1.5 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer ml-1"><i data-lucide="layout-dashboard" class="w-4 h-4"></i></div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Activity Bar -->
+        <div class="w-[48px] h-full flex flex-col items-center justify-between py-3 z-10 shrink-0 border-r border-[#2b2b2b]" style="background-color: var(--bg-activity);">
+            <div class="flex flex-col gap-5 w-full items-center text-[#858585]">
+                <div class="relative w-full flex justify-center cursor-pointer text-white" onclick="toggleSidebar()">
+                    <div class="absolute left-0 top-0 bottom-0 w-[2px] bg-white"></div>
+                    <i data-lucide="files" class="w-6 h-6"></i>
+                </div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="search" class="w-6 h-6"></i></div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="git-branch" class="w-6 h-6"></i></div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white" onclick="runCode()"><i data-lucide="play" class="w-6 h-6"></i></div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="blocks" class="w-6 h-6"></i></div>
+            </div>
+            <div class="flex flex-col gap-5 w-full items-center text-[#858585]">
+                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="circle-user" class="w-6 h-6"></i></div>
+                <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="settings" class="w-6 h-6"></i></div>
+            </div>
+        </div>
+
+        <!-- Sidebar (Explorer) -->
+        <div id="sidebar" class="w-[250px] h-full flex flex-col shrink-0 transition-all duration-150 border-r border-[#2b2b2b]" style="background-color: var(--bg-sidebar);">
+            <!-- Header -->
+            <div class="h-[35px] pl-5 pr-2 flex items-center justify-between text-[11px] text-[#cccccc]">
+                <span>EXPLORER</span>
+                <div class="flex items-center gap-1">
+                    <i data-lucide="file-plus" onclick="createNewFile()" class="w-4 h-4 cursor-pointer hover:text-white rounded p-0.5 hover:bg-[rgba(255,255,255,0.1)]" title="New File"></i>
+                    <i data-lucide="more-horizontal" class="w-4 h-4 cursor-pointer hover:text-white rounded p-0.5 hover:bg-[rgba(255,255,255,0.1)]"></i>
+                </div>
+            </div>
+            
+            <!-- Accordion -->
+            <div class="flex-1 overflow-y-auto">
+                <div class="flex items-center px-1 py-1 cursor-pointer hover:bg-[rgba(255,255,255,0.05)] font-bold text-[11px] text-[#cccccc]" onclick="toggleFolder()">
+                    <i data-lucide="chevron-down" id="folder-chevron" class="w-4 h-4 mr-0.5 transition-transform duration-200"></i>
+                    <span class="tracking-wide">VSCODE-CLONE</span>
+                </div>
+                
+                <!-- File Tree -->
+                <div class="flex flex-col text-[13px] text-[#cccccc]" id="file-tree">
+                    <!-- JS Generated -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Editor Area -->
+        <div class="flex-1 h-full flex flex-col min-w-0 relative" style="background-color: var(--bg-editor);" id="editor-wrapper">
+            
+            <!-- Tab Bar Container -->
+            <div class="flex items-center justify-between pr-2 border-b border-[#2b2b2b]" style="background-color: var(--bg-sidebar);">
+                <!-- Editor Tabs -->
+                <div class="flex items-end overflow-x-auto no-scrollbar flex-1" id="editor-tabs">
+                    <!-- JS Generated -->
+                </div>
+                <!-- Editor Actions -->
+                <div class="flex items-center gap-2 pl-2 text-[#cccccc]" id="editor-actions">
+                    <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer text-[#4ade80]" title="Run Code" onclick="runCode()">
+                        <i data-lucide="play" class="w-4 h-4"></i>
+                    </div>
+                    <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" title="Download File" onclick="downloadCurrentFile()">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                    </div>
+                    <div class="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded cursor-pointer" title="Split Editor Right">
+                        <i data-lucide="split-square-horizontal" class="w-4 h-4"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Breadcrumbs -->
+            <div id="breadcrumbs" class="h-[22px] w-full flex items-center px-4 text-[12px] text-[#969696] shadow-[0_1px_2px_rgba(0,0,0,0.2)] z-10 shrink-0" style="background-color: var(--bg-editor);">
+                <span class="hover:text-white cursor-pointer">vscode-clone</span>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5 mx-0.5"></i>
+                <div class="flex items-center hover:text-white cursor-pointer">
+                    <span id="breadcrumb-icon" class="mr-1"></span>
+                    <span id="breadcrumb-filename">index.js</span>
+                </div>
+            </div>
+
+            <!-- Editor / Terminal Split Container -->
+            <div class="flex-1 flex flex-col relative h-full overflow-hidden">
+                <!-- Monaco Instance -->
+                <div class="flex-1 relative w-full h-full min-h-0">
+                    <!-- Watermark for empty state -->
+                    <svg class="editor-watermark w-64 h-64 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.5 3l-6 5.5-3-2.5-4 3 13 11 6-5V3l-6 5.5z"/>
+                    </svg>
+                    <div id="monaco-editor" class="monaco-editor-container"></div>
+                </div>
+
+                <!-- Terminal Bottom Panel -->
+                <div id="terminal-panel" class="hidden h-[250px] w-full shrink-0 flex-col border-t border-[#2b2b2b]" style="background-color: var(--bg-editor);">
+                    <div class="flex items-center justify-between h-[35px] px-4 border-b border-[#2b2b2b]">
+                        <div class="flex gap-4 text-[11px] font-medium tracking-wide text-[#cccccc]">
+                            <span class="cursor-pointer hover:text-white pb-2 border-b-2 border-transparent">PROBLEMS</span>
+                            <span class="cursor-pointer hover:text-white pb-2 border-b-2 border-transparent">OUTPUT</span>
+                            <span class="cursor-pointer hover:text-white pb-2 border-b-2 border-[#007acc] text-white">TERMINAL</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-[#cccccc]">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5 cursor-pointer hover:text-white" onclick="clearTerminal()" title="Clear Terminal"></i>
+                            <i data-lucide="x" class="w-4 h-4 cursor-pointer hover:text-white ml-2" onclick="toggleTerminal()" title="Close Panel"></i>
+                        </div>
+                    </div>
+                    <div id="terminal-output" class="flex-1 p-3 overflow-y-auto font-mono text-[12px] text-[#cccccc] select-text">
+                        <div class="text-[#007acc]">VS Code Clone Terminal - Ready</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="h-[22px] w-full flex items-center justify-between text-white text-[12px] px-2 select-none z-20" style="background-color: var(--bg-statusbar);">
+        <div class="flex items-center gap-2 h-full">
+            <div class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors bg-[rgba(255,255,255,0.1)]">
+                <i data-lucide="remote" class="w-3.5 h-3.5"></i>
+                <span>><</span>
+            </div>
+            <div class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
+                <i data-lucide="git-branch" class="w-3.5 h-3.5"></i>
+                <span>main*</span>
+            </div>
+            <div class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </div>
+            <div class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
+                <i data-lucide="x-circle" class="w-3 h-3"></i> 0
+                <i data-lucide="alert-triangle" class="w-3 h-3 ml-1"></i> 0
+            </div>
+        </div>
+        <div class="flex items-center h-full">
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors" id="status-line-col">Ln 1, Col 1</div>
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">Spaces: 4</div>
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">UTF-8</div>
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors" id="status-language">JavaScript</div>
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">
+                <i data-lucide="check-check" class="w-3.5 h-3.5 mr-1"></i> Prettier
+            </div>
+            <div class="flex items-center h-full hover:bg-[rgba(255,255,255,0.2)] px-2 cursor-pointer transition-colors">
+                <i data-lucide="bell" class="w-3.5 h-3.5"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    
+    <script>
+        lucide.createIcons();
+
+        // System Data
+        const fileSystem = {
+            'index.js': {
+                language: 'javascript',
+                iconColor: 'text-[#f1e05a]',
+                lucideIcon: 'file-code-2',
+                content: `// Welcome to the VS Code clone!
+// Hit the "Play" icon in the top right, or click "Run" in the menu to execute!
+
+const app = {
+    name: "VS Code Web",
+    version: "2.0.0",
+    features: ["Execution", "File Management", "Downloads"]
+};
+
+console.log(\`Running \${app.name} v\${app.version}...\`);
+
+// Loop example
+for(let i=1; i<=3; i++) {
+    console.log("Initialization step:", i);
+}
+
+console.log("Ready!");`
+            },
+            'style.css': {
+                language: 'css',
+                iconColor: 'text-[#3b82f6]',
+                lucideIcon: 'file-json-2',
+                content: `body {
+    background-color: #1e1e1e;
+    color: white;
+}`
+            },
+            'index.html': {
+                language: 'html',
+                iconColor: 'text-[#e34c26]',
+                lucideIcon: 'file-code',
+                content: `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+        h1 { color: #007acc; }
+    </style>
+</head>
+<body>
+    <h1>Hello from HTML Preview!</h1>
+    <p>Click the <b>Run</b> button to see me render.</p>
+</body>
+</html>`
+            }
+        };
+
+        // State
+        let currentFile = 'index.js';
+        let openFiles = ['index.js', 'style.css', 'index.html'];
+        let editorInstance = null;
+        let isSidebarOpen = true;
+        let isFolderOpen = true;
+        let isTerminalOpen = false;
+        let activeMenu = null;
+
+        // UI Renders
+        function renderFileTree() {
+            const treeContainer = document.getElementById('file-tree');
+            treeContainer.innerHTML = '';
+
+            if (!isFolderOpen) return;
+
+            Object.keys(fileSystem).forEach(filename => {
+                const file = fileSystem[filename];
+                const isActive = filename === currentFile;
+                
+                const div = document.createElement('div');
+                div.className = `group flex items-center justify-between pl-6 pr-2 py-[3px] cursor-pointer file-hover ${isActive ? 'file-active' : ''}`;
+                
+                div.innerHTML = `
+                    <div class="flex items-center flex-1 overflow-hidden" onclick="switchFile('${filename}')">
+                        <i data-lucide="${file.lucideIcon}" class="w-4 h-4 mr-1.5 shrink-0 ${file.iconColor}"></i>
+                        <span class="truncate">${filename}</span>
+                    </div>
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 hover:text-red-400 shrink-0 ml-2" onclick="deleteFile(event, '${filename}')" title="Delete File"></i>
+                `;
+                treeContainer.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function renderTabs() {
+            const tabsContainer = document.getElementById('editor-tabs');
+            tabsContainer.innerHTML = '';
+
+            openFiles.forEach(filename => {
+                const file = fileSystem[filename];
+                const isActive = filename === currentFile;
+                
+                const tab = document.createElement('div');
+                tab.className = `flex items-center h-[35px] px-3 cursor-pointer border-r border-[#2b2b2b] shrink-0 group transition-colors ${isActive ? 'tab-active' : 'tab-inactive'}`;
+                tab.onclick = () => switchFile(filename);
+
+                tab.innerHTML = `
+                    <i data-lucide="${file.lucideIcon}" class="w-4 h-4 mr-1.5 ${file.iconColor}"></i>
+                    <span class="mr-2 whitespace-nowrap ${isActive ? 'text-white' : 'text-[#969696]'}">${filename}</span>
+                    <div class="w-5 h-5 flex items-center justify-center rounded hover:bg-[rgba(255,255,255,0.1)] ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}" onclick="closeTab(event, '${filename}')">
+                        <i data-lucide="x" class="w-3.5 h-3.5 text-[#cccccc]"></i>
+                    </div>
+                `;
+                tabsContainer.appendChild(tab);
+            });
+            lucide.createIcons();
+            
+            // Handle Empty State
+            const wrapper = document.getElementById('editor-wrapper');
+            if (openFiles.length === 0) {
+                wrapper.classList.add('show-watermark');
+                document.getElementById('status-language').innerText = 'Plain Text';
+            } else {
+                wrapper.classList.remove('show-watermark');
+            }
+        }
+
+        function updateBreadcrumbsAndStatus() {
+            if (!currentFile) return;
+            const file = fileSystem[currentFile];
+            
+            const iconContainer = document.getElementById('breadcrumb-icon');
+            iconContainer.innerHTML = `<i data-lucide="${file.lucideIcon}" class="w-3.5 h-3.5 ${file.iconColor}"></i>`;
+            document.getElementById('breadcrumb-filename').innerText = currentFile;
+            
+            const langName = file.language.charAt(0).toUpperCase() + file.language.slice(1);
+            document.getElementById('status-language').innerText = langName;
+            
+            lucide.createIcons();
+        }
+
+        // Functional Actions
+        function createNewFile() {
+            const name = prompt("Enter file name with extension (e.g., script.js, style.css, doc.txt):");
+            if (!name || name.trim() === '') return;
+            if (fileSystem[name]) {
+                alert("File already exists!");
+                return;
+            }
+
+            const ext = name.split('.').pop().toLowerCase();
+            const langMap = { js: 'javascript', html: 'html', css: 'css', md: 'markdown', txt: 'plaintext', json: 'json', ts: 'typescript' };
+            const icons = { js: 'file-code-2', html: 'file-code', css: 'file-json-2', md: 'file-text', txt: 'file', json: 'file-json', ts: 'file-code-2' };
+            const colors = { js: 'text-[#f1e05a]', html: 'text-[#e34c26]', css: 'text-[#3b82f6]', md: 'text-[#4ade80]', txt: 'text-[#cccccc]', json: 'text-[#fbc02d]', ts: 'text-[#3178c6]' };
+
+            fileSystem[name] = {
+                language: langMap[ext] || 'plaintext',
+                iconColor: colors[ext] || 'text-[#cccccc]',
+                lucideIcon: icons[ext] || 'file',
+                content: ''
+            };
+
+            switchFile(name);
+        }
+
+        function deleteFile(event, filename) {
+            event.stopPropagation();
+            if(confirm(`Are you sure you want to delete '${filename}'?`)) {
+                delete fileSystem[filename];
+                closeTab(event, filename); // This re-renders everything
+            }
+        }
+
+        function downloadCurrentFile() {
+            if(!currentFile || !fileSystem[currentFile]) return;
+            const content = fileSystem[currentFile].content;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFile;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            const term = document.getElementById('terminal-output');
+            term.innerHTML += `<div class="text-[#4ade80]">> Downloaded ${currentFile}</div>`;
+            showTerminal();
+        }
+
+        function runCode() {
+            if(!currentFile || !fileSystem[currentFile]) return;
+            const file = fileSystem[currentFile];
+
+            if (file.language === 'javascript') {
+                showTerminal();
+                const term = document.getElementById('terminal-output');
+                term.innerHTML += `<div class="text-[#007acc] mt-2">> node ${currentFile}</div>`;
+                
+                // Override console.log
+                const originalLog = console.log;
+                const originalError = console.error;
+                
+                console.log = (...args) => {
+                    const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ');
+                    term.innerHTML += `<div>${msg}</div>`;
+                    originalLog(...args);
+                };
+                console.error = (...args) => {
+                    const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ');
+                    term.innerHTML += `<div class="text-[#f48771]">${msg}</div>`;
+                    originalError(...args);
+                };
+
+                try {
+                    // Create a safe-ish function scope to execute
+                    const execFunction = new Function(file.content);
+                    execFunction();
+                } catch (e) {
+                    term.innerHTML += `<div class="text-[#f48771]">${e.toString()}</div>`;
+                }
+
+                // Restore
+                console.log = originalLog;
+                console.error = originalError;
+                
+                // Scroll to bottom
+                term.scrollTop = term.scrollHeight;
+
+            } else if (file.language === 'html') {
+                // Open HTML in a new popup window
+                const newWindow = window.open('', '_blank');
+                if(newWindow) {
+                    newWindow.document.write(file.content);
+                    newWindow.document.close();
+                } else {
+                    alert("Popup blocked! Allow popups to preview HTML.");
+                }
+            } else {
+                showTerminal();
+                const term = document.getElementById('terminal-output');
+                term.innerHTML += `<div class="text-[#fbc02d] mt-2">> Execution not supported for ${file.language} files. Try running a JS or HTML file.</div>`;
+                term.scrollTop = term.scrollHeight;
+            }
+        }
+
+        // Window & Layout Controls
+        function switchFile(filename) {
+            if (!fileSystem[filename]) return;
+            if (!openFiles.includes(filename)) openFiles.push(filename);
+            
+            currentFile = filename;
+            
+            renderFileTree();
+            renderTabs();
+            updateBreadcrumbsAndStatus();
+            
+            if (editorInstance) {
+                const model = editorInstance.getModel();
+                monaco.editor.setModelLanguage(model, fileSystem[filename].language);
+                editorInstance.setValue(fileSystem[filename].content);
+            }
+        }
+
+        function closeTab(event, filename) {
+            if(event) event.stopPropagation();
+            openFiles = openFiles.filter(f => f !== filename);
+            
+            if (openFiles.length === 0) {
+                currentFile = null;
+                renderFileTree();
+                renderTabs();
+            } else if (currentFile === filename) {
+                switchFile(openFiles[openFiles.length - 1]);
+            } else {
+                renderTabs();
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            isSidebarOpen = !isSidebarOpen;
+            
+            sidebar.style.width = isSidebarOpen ? '250px' : '0px';
+            sidebar.style.borderRightWidth = isSidebarOpen ? '1px' : '0px';
+
+            setTimeout(() => { if (editorInstance) editorInstance.layout(); }, 160);
+        }
+
+        function toggleFolder() {
+            isFolderOpen = !isFolderOpen;
+            document.getElementById('folder-chevron').style.transform = isFolderOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+            renderFileTree();
+        }
+
+        function toggleTerminal() {
+            const panel = document.getElementById('terminal-panel');
+            isTerminalOpen = !isTerminalOpen;
+            if (isTerminalOpen) {
+                panel.classList.remove('hidden');
+                panel.classList.add('flex');
+            } else {
+                panel.classList.add('hidden');
+                panel.classList.remove('flex');
+            }
+            setTimeout(() => { if (editorInstance) editorInstance.layout(); }, 10);
+        }
+
+        function showTerminal() {
+            if(!isTerminalOpen) toggleTerminal();
+        }
+
+        function clearTerminal() {
+            document.getElementById('terminal-output').innerHTML = '<div class="text-[#007acc]">Terminal Cleared</div>';
+        }
+
+        // Top Menu Dropdown System
+        const topMenus = {
+            'File': [
+                { label: 'New File', action: createNewFile, shortcut: 'Ctrl+N' },
+                { label: 'Download Current File', action: downloadCurrentFile, shortcut: 'Ctrl+S' },
+                { divider: true },
+                { label: 'Close Editor', action: () => { if(currentFile) closeTab(new Event('click'), currentFile) }, shortcut: 'Ctrl+W' }
+            ],
+            'Edit': [
+                { label: 'Undo', action: () => editorInstance && editorInstance.trigger('keyboard', 'undo'), shortcut: 'Ctrl+Z' },
+                { label: 'Redo', action: () => editorInstance && editorInstance.trigger('keyboard', 'redo'), shortcut: 'Ctrl+Y' },
+                { divider: true },
+                { label: 'Cut', action: () => { document.execCommand('cut'); if(editorInstance) editorInstance.focus(); }, shortcut: 'Ctrl+X' },
+                { label: 'Copy', action: () => { document.execCommand('copy'); if(editorInstance) editorInstance.focus(); }, shortcut: 'Ctrl+C' },
+                { label: 'Paste', action: () => { document.execCommand('paste'); if(editorInstance) editorInstance.focus(); }, shortcut: 'Ctrl+V' }
+            ],
+            'Selection': [
+                { label: 'Select All', action: () => editorInstance && editorInstance.setSelection(editorInstance.getModel().getFullModelRange()), shortcut: 'Ctrl+A' }
+            ],
+            'View': [
+                { label: 'Toggle Side Bar', action: toggleSidebar, shortcut: 'Ctrl+B' },
+                { label: 'Toggle Terminal', action: toggleTerminal, shortcut: 'Ctrl+`' },
+                { divider: true },
+                { label: 'Toggle Word Wrap', action: () => {
+                    if(editorInstance) {
+                        const currentWrap = editorInstance.getOption(monaco.editor.EditorOption.wordWrap);
+                        editorInstance.updateOptions({ wordWrap: currentWrap === 'on' ? 'off' : 'on' });
+                    }
+                }, shortcut: 'Alt+Z' }
+            ],
+            'Run': [
+                { label: 'Run Code', action: runCode, shortcut: 'F5' }
+            ],
+            'Terminal': [
+                { label: 'New Terminal', action: showTerminal, shortcut: 'Ctrl+Shift+`' },
+                { label: 'Clear Terminal', action: clearTerminal }
+            ],
+            'Help': [
+                { label: 'About VS Code Clone', action: () => alert('VS Code Web Clone\nVersion 2.0.0\nBuilt with HTML, CSS, JS, and Monaco Editor.') }
+            ]
+        };
+
+        function toggleMenu(event, menuName) {
+            event.stopPropagation();
+            if (activeMenu === menuName) {
+                closeMenu();
+            } else {
+                openMenu(event.currentTarget, menuName);
+            }
+        }
+
+        function hoverMenu(event, menuName) {
+            // Act like VS Code: if a menu is already open, hovering over another menu item switches to it
+            if (activeMenu && activeMenu !== menuName) {
+                openMenu(event.currentTarget, menuName);
+            }
+        }
+
+        function openMenu(element, menuName) {
+            activeMenu = menuName;
+            
+            // Highlight active menu item in the top bar
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('menu-active'));
+            element.classList.add('menu-active');
+
+            const rect = element.getBoundingClientRect();
+            const dropdown = document.getElementById('menu-dropdown');
+            
+            dropdown.innerHTML = '';
+            const items = topMenus[menuName] || [];
+            
+            items.forEach(item => {
+                if (item.divider) {
+                    const div = document.createElement('div');
+                    div.className = 'my-1 border-b border-[#454545]';
+                    dropdown.appendChild(div);
+                    return;
+                }
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between px-6 py-1.5 hover:bg-[#0060c0] hover:text-white cursor-pointer transition-colors duration-75 group';
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    closeMenu();
+                    if (item.action) item.action();
+                };
+                
+                const labelSpan = document.createElement('span');
+                labelSpan.innerText = item.label;
+                div.appendChild(labelSpan);
+                
+                if (item.shortcut) {
+                    const shortcutSpan = document.createElement('span');
+                    shortcutSpan.className = 'ml-6 text-[#858585] group-hover:text-white text-[11px]';
+                    shortcutSpan.innerText = item.shortcut;
+                    div.appendChild(shortcutSpan);
+                }
+                
+                dropdown.appendChild(div);
+            });
+            
+            // Position exactly under the clicked menu item
+            dropdown.style.left = `${rect.left}px`;
+            dropdown.style.top = `${rect.bottom}px`;
+            dropdown.classList.remove('hidden');
+        }
+
+        function closeMenu() {
+            activeMenu = null;
+            document.getElementById('menu-dropdown').classList.add('hidden');
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('menu-active'));
+        }
+
+        // Close menu if clicking anywhere else in the window
+        document.addEventListener('click', closeMenu);
+
+        // Initialize Monaco
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+
+        require(['vs/editor/editor.main'], function() {
+            // Setup custom VS Code Dark Theme overrides
+            monaco.editor.defineTheme('vscode-clone-dark', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [],
+                colors: {
+                    'editor.background': '#1e1e1e',
+                    'editor.lineHighlightBackground': '#ffffff0a'
+                }
+            });
+
+            const initialFile = fileSystem[currentFile];
+            
+            editorInstance = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: initialFile ? initialFile.content : '',
+                language: initialFile ? initialFile.language : 'plaintext',
+                theme: 'vscode-clone-dark',
+                automaticLayout: true,
+                minimap: { enabled: true, renderCharacters: false },
+                fontSize: 14,
+                fontFamily: "'Droid Sans Mono', 'monospace', monospace",
+                lineHeight: 21,
+                padding: { top: 12 },
+                scrollBeyondLastLine: false,
+                smoothScrolling: true,
+                renderLineHighlight: "all",
+                cursorBlinking: "smooth"
+            });
+
+            editorInstance.onDidChangeCursorPosition((e) => {
+                document.getElementById('status-line-col').innerText = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+            });
+
+            editorInstance.onDidChangeModelContent(() => {
+                if (currentFile) fileSystem[currentFile].content = editorInstance.getValue();
+            });
+            
+            // Allow layout fixing on resize
+            window.addEventListener('resize', () => {
+                editorInstance.layout();
+            });
+        });
+
+        // First Mount
+        renderFileTree();
+        renderTabs();
+        updateBreadcrumbsAndStatus();
+
+    </script>
+</body>
+</html>
