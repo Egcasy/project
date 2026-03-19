@@ -34,6 +34,9 @@
     <!-- Pyodide for Python -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
 
+    <!-- Emmet for Monaco -->
+    <script src="https://unpkg.com/emmet-monaco-es@latest/dist/emmet-monaco.min.js"></script>
+
     <!-- xterm.js for Terminal -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
@@ -340,8 +343,9 @@
                         onclick="switchSidebarTab('search')">
                         <i data-lucide="search" class="w-6 h-6"></i>
                     </div>
-                    <div class="w-full flex justify-center cursor-pointer hover:text-white"><i data-lucide="git-branch"
-                            class="w-6 h-6"></i></div>
+                    <div id="activity-scm" class="w-full flex justify-center cursor-pointer hover:text-white" onclick="switchSidebarTab('scm')">
+                        <i data-lucide="git-branch" class="w-6 h-6"></i>
+                    </div>
                     <div class="w-full flex justify-center cursor-pointer hover:text-white" onclick="runCode()"><i
                             data-lucide="play" class="w-6 h-6"></i></div>
                     <div id="activity-extensions" class="w-full flex justify-center cursor-pointer hover:text-white"
@@ -384,9 +388,11 @@
                             <!-- Explorer Empty State -->
                             <div id="explorer-empty-state" class="hidden px-4 py-4 mt-4 text-center text-[#858585]">
                                 <p class="text-[12px] mb-3 leading-relaxed">You have not yet opened a folder.</p>
-                                <button onclick="document.getElementById('file-input').click()" class="bg-[#007acc] hover:bg-[#0062a3] text-white px-3 py-1.5 rounded transition-colors text-[11px] font-bold">Open Folder</button>
+                                <button onclick="document.getElementById('file-input').click()"
+                                    class="bg-[#007acc] hover:bg-[#0062a3] text-white px-3 py-1.5 rounded transition-colors text-[11px] font-bold">Open
+                                    Folder</button>
                             </div>
-                            
+
                             <!-- Explorer Content -->
                             <div id="explorer-content">
                                 <div class="flex items-center px-1 py-1 cursor-pointer hover:bg-[rgba(255,255,255,0.05)] font-bold text-[11px] text-[#cccccc]"
@@ -410,6 +416,33 @@
                             <div id="outline-container"
                                 class="flex flex-col text-[12px] text-[#858585] max-h-[300px] overflow-y-auto">
                                 <!-- JS Generated Symbols -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Source Control Tab -->
+                    <div id="tab-scm" class="hidden flex flex-col h-full">
+                        <div class="h-[35px] pl-5 pr-2 flex items-center justify-between text-[11px] text-[#cccccc]">
+                            <span>SOURCE CONTROL</span>
+                            <i data-lucide="check" class="w-4 h-4 cursor-pointer hover:text-white" title="Commit" onclick="commitChanges()"></i>
+                        </div>
+                        <div class="p-3 pb-2">
+                            <input type="text" id="scm-commit-input"
+                                class="w-full bg-[#1e1e1e] border border-[#3c3c3c] text-[#cccccc] px-2 py-1 text-[12px] outline-none rounded focus:border-[#007acc] transition-colors"
+                                placeholder="Message (Enter to commit)" onkeypress="if(event.key==='Enter') commitChanges()">
+                        </div>
+                        <div class="p-3 pt-0">
+                            <button onclick="commitChanges()" class="w-full bg-[#007acc] hover:bg-[#0062a3] text-white py-1.5 rounded text-[11px] font-bold transition-colors">Commit</button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto">
+                            <div class="flex items-center px-1 py-1 cursor-pointer hover:bg-[rgba(255,255,255,0.05)] font-bold text-[11px] text-[#cccccc]" onclick="document.getElementById('scm-changes-list').classList.toggle('hidden'); document.getElementById('scm-chevron').style.transform = document.getElementById('scm-changes-list').classList.contains('hidden') ? 'rotate(-90deg)' : 'rotate(0deg)'">
+                                <i data-lucide="chevron-down" id="scm-chevron" class="w-4 h-4 mr-0.5 transition-transform duration-200"></i>
+                                <span class="tracking-wide">CHANGES</span>
+                                <span id="scm-changes-count" class="ml-2 bg-[rgba(255,255,255,0.1)] rounded px-1.5 py-0.5 text-[10px]">0</span>
+                            </div>
+                            <div id="scm-changes-list" class="flex flex-col text-[12px] py-1">
+                                <!-- Changes injected here -->
+                                <div class="px-6 py-2 text-[#858585] italic text-[11px]">No changes detected.</div>
                             </div>
                         </div>
                     </div>
@@ -451,9 +484,13 @@
                         </div>
                         <div class="flex-1 overflow-y-auto">
                             <div class="p-2">
-                                <h3 id="extensions-list-title" class="text-[11px] font-bold text-[#858585] px-2 mb-2 uppercase tracking-widest hidden"></h3>
+                                <h3 id="extensions-list-title"
+                                    class="text-[11px] font-bold text-[#858585] px-2 mb-2 uppercase tracking-widest hidden">
+                                </h3>
                                 <div id="extensions-list-container" class="flex flex-col gap-1">
-                                    <div class="text-[#858585] text-[11px] p-2 italic flex items-center gap-2"><i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Loading...</div>
+                                    <div class="text-[#858585] text-[11px] p-2 italic flex items-center gap-2"><i
+                                            data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Loading...
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -570,46 +607,82 @@
                         <!-- Left Editor Pane -->
                         <div id="editor-pane-left" class="flex-1 relative min-w-0 panel-active">
                             <div id="monaco-editor-left" class="monaco-editor-container h-full w-full"></div>
-                            
+
                             <!-- Custom Extension UI (Left) -->
-                            <div id="extension-details-view-left" class="hidden absolute top-0 left-0 w-full h-full overflow-y-auto z-10 p-4 md:p-8 flex flex-col" style="background-color: var(--bg-editor);">
+                            <div id="extension-details-view-left"
+                                class="hidden absolute top-0 left-0 w-full h-full overflow-y-auto z-10 p-4 md:p-8 flex flex-col"
+                                style="background-color: var(--bg-editor);">
                                 <div class="max-w-[900px] w-full mx-auto select-text">
                                     <div class="flex gap-6 mb-8">
-                                        <div id="ext-icon-left" class="w-[100px] h-[100px] rounded shrink-0 border border-[#3c3c3c] bg-[#1a1a1a] flex items-center justify-center p-2"></div>
+                                        <div id="ext-icon-left"
+                                            class="w-[100px] h-[100px] rounded shrink-0 border border-[#3c3c3c] bg-[#1a1a1a] flex items-center justify-center p-2">
+                                        </div>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-baseline gap-3 mb-1">
-                                                <h1 id="ext-title-left" class="text-[26px] font-semibold text-[#cccccc] truncate">Extension</h1>
-                                                <span id="ext-version-left" class="text-[12px] text-[#858585]">v1.0.0</span>
+                                                <h1 id="ext-title-left"
+                                                    class="text-[26px] font-semibold text-[#cccccc] truncate">Extension
+                                                </h1>
+                                                <span id="ext-version-left"
+                                                    class="text-[12px] text-[#858585]">v1.0.0</span>
                                             </div>
                                             <div class="text-[13px] text-[#858585] mb-2 flex items-center gap-4">
-                                                <span id="ext-publisher-left" class="text-[#3794ff] cursor-pointer hover:underline">Publisher</span>
-                                                <span class="flex items-center gap-1.5"><i data-lucide="download" class="w-3.5 h-3.5"></i> <span id="ext-downloads-left">--</span></span>
-                                                <span class="flex items-center gap-1.5"><i data-lucide="star" class="w-3.5 h-3.5 text-[#e5b567]"></i> <span id="ext-rating-left">--</span></span>
-                                                <span class="flex items-center gap-1.5 border border-[#3c3c3c] px-1.5 uppercase text-[10px] rounded shrink-0">
+                                                <span id="ext-publisher-left"
+                                                    class="text-[#3794ff] cursor-pointer hover:underline">Publisher</span>
+                                                <span class="flex items-center gap-1.5"><i data-lucide="download"
+                                                        class="w-3.5 h-3.5"></i> <span
+                                                        id="ext-downloads-left">--</span></span>
+                                                <span class="flex items-center gap-1.5"><i data-lucide="star"
+                                                        class="w-3.5 h-3.5 text-[#e5b567]"></i> <span
+                                                        id="ext-rating-left">--</span></span>
+                                                <span
+                                                    class="flex items-center gap-1.5 border border-[#3c3c3c] px-1.5 uppercase text-[10px] rounded shrink-0">
                                                     <span id="ext-namespace-left">namespace</span>
                                                 </span>
-                                                <span id="ext-published-left" class="text-[12px] shrink-0 text-[#858585]">Recently</span>
+                                                <span id="ext-published-left"
+                                                    class="text-[12px] shrink-0 text-[#858585]">Recently</span>
                                             </div>
-                                            <div id="ext-description-left" class="text-[13px] text-[#cccccc] mb-5">...</div>
-                                            
-                                            <div class="flex gap-2 items-center" id="ext-actions-left">
-                                                <!-- Auto-populated buttons -->
+
+                                            <div id="ext-categories-left" class="flex gap-2 mb-3 flex-wrap"></div>
+
+                                            <div id="ext-description-left" class="text-[13px] text-[#cccccc] mb-5">...
+                                            </div>
+
+                                            <div class="flex gap-6 items-center">
+                                                <div class="flex gap-2 items-center" id="ext-actions-left">
+                                                    <!-- Auto-populated buttons -->
+                                                </div>
+                                                <label
+                                                    class="flex items-center gap-2 text-[11px] text-[#cccccc] cursor-pointer hover:text-white transition-colors"
+                                                    title="Auto-Update this extension">
+                                                    <input type="checkbox"
+                                                        class="w-3.5 h-3.5 rounded border-[#3c3c3c] bg-[#1e1e1e] text-[#007acc] focus:ring-0 cursor-pointer"
+                                                        id="ext-autoupdate-left" checked>
+                                                    Auto-Update
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    <div class="flex border-b border-[#3c3c3c] mb-6 select-none font-medium">
-                                        <div class="px-5 py-2.5 border-b-2 border-[#3794ff] text-[#cccccc] cursor-pointer text-[12px] tracking-wide">DETAILS</div>
-                                        <div class="px-5 py-2.5 border-b-2 border-transparent text-[#858585] hover:text-[#cccccc] cursor-pointer text-[12px] tracking-wide">FEATURE CONTRIBUTIONS</div>
-                                        <div class="px-5 py-2.5 border-b-2 border-transparent text-[#858585] hover:text-[#cccccc] cursor-pointer text-[12px] tracking-wide">CHANGELOG</div>
+
+                                    <div class="flex border-b border-[#3c3c3c] mb-6 select-none font-medium text-[12px] tracking-wide"
+                                        id="ext-tabs-left">
+                                        <div class="px-5 py-2.5 border-b-2 border-[#3794ff] text-[#cccccc] cursor-pointer"
+                                            onclick="switchExtTab('left', 'details')" id="ext-tab-details-left">DETAILS
+                                        </div>
+                                        <div class="px-5 py-2.5 border-b-2 border-transparent text-[#858585] hover:text-[#cccccc] cursor-pointer"
+                                            onclick="switchExtTab('left', 'features')" id="ext-tab-features-left">
+                                            FEATURE CONTRIBUTIONS</div>
+                                        <div class="px-5 py-2.5 border-b-2 border-transparent text-[#858585] hover:text-[#cccccc] cursor-pointer"
+                                            onclick="switchExtTab('left', 'changelog')" id="ext-tab-changelog-left">
+                                            CHANGELOG</div>
                                     </div>
-                                    
-                                    <div id="ext-content-left" class="pb-20 text-[#cccccc] text-[14px] leading-relaxed markdown-body">
+
+                                    <div id="ext-content-left"
+                                        class="pb-20 text-[#cccccc] text-[14px] leading-relaxed markdown-body">
                                         <!-- Markdown injected here -->
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div id="dashboard" class="select-text">
                                 <div class="mb-12">
                                     <h1 class="text-4xl font-light mb-2">Visual Studio Code</h1>
@@ -658,47 +731,237 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Custom Settings View (Left) -->
+                            <div id="settings-view-left"
+                                class="hidden absolute top-0 left-0 w-full h-full overflow-y-auto z-10 p-8 flex flex-col"
+                                style="background-color: var(--bg-editor);">
+                                <div class="max-w-[700px] w-full select-text">
+                                    <h1 class="text-[24px] font-semibold text-[#cccccc] mb-6">Settings</h1>
+                                    <div class="mb-4">
+                                        <input type="text"
+                                            class="w-[400px] bg-[#3c3c3c] border border-[#454545] text-[#cccccc] px-3 py-1.5 text-[13px] rounded focus:outline-none focus:border-[#007acc]"
+                                            placeholder="Search settings">
+                                    </div>
+                                    <div class="flex flex-col gap-6 text-[#cccccc]">
+                                        <!-- Editor Setting Block -->
+                                        <div>
+                                            <h2
+                                                class="text-[18px] mb-3 text-[#cccccc] font-medium border-b border-[#3c3c3c] pb-1">
+                                                Text Editor</h2>
+
+                                            <div class="mb-5 pl-2">
+                                                <div class="flex items-center gap-3">
+                                                    <label class="text-[13px] font-medium w-[150px]">Word Wrap</label>
+                                                    <select id="setting-wordwrap-left"
+                                                        class="bg-[#3c3c3c] border border-[#454545] text-[#cccccc] px-2 py-1 text-[12px] w-[150px] rounded focus:outline-none"
+                                                        onchange="updateEditorSetting('wordWrap', this.value === 'on')">
+                                                        <option value="off">off</option>
+                                                        <option value="on">on</option>
+                                                    </select>
+                                                </div>
+                                                <div class="text-[#858585] text-[12px] mt-1 pl-[162px]">Controls how
+                                                    lines should wrap.</div>
+                                            </div>
+
+                                            <div class="mb-5 pl-2">
+                                                <div class="flex items-center gap-3">
+                                                    <label class="text-[13px] font-medium w-[150px]">Minimap</label>
+                                                    <input type="checkbox" id="setting-minimap-left"
+                                                        class="w-3.5 h-3.5 rounded border-[#3c3c3c] bg-[#1e1e1e] cursor-pointer"
+                                                        onchange="updateEditorSetting('minimap', this.checked)">
+                                                </div>
+                                                <div class="text-[#858585] text-[12px] mt-1 pl-[162px]">Controls whether
+                                                    the minimap is shown.</div>
+                                            </div>
+
+                                            <div class="mb-5 pl-2">
+                                                <div class="flex items-center gap-3">
+                                                    <label class="text-[13px] font-medium w-[150px]">Font Size</label>
+                                                    <input type="number" id="setting-fontsize-left"
+                                                        class="w-[150px] bg-[#3c3c3c] border border-[#454545] text-[#cccccc] px-2 py-1 text-[12px] rounded focus:outline-none"
+                                                        value="14" min="8" max="32"
+                                                        onchange="updateEditorSetting('fontSize', this.value)">
+                                                </div>
+                                                <div class="text-[#858585] text-[12px] mt-1 pl-[162px]">Controls the
+                                                    font size in pixels.</div>
+                                            </div>
+
+                                            <div class="mb-5 pl-2">
+                                                <div class="flex items-center gap-3">
+                                                    <label class="text-[13px] font-medium w-[150px]">Cursor
+                                                        Blinking</label>
+                                                    <select id="setting-blinking-left"
+                                                        class="bg-[#3c3c3c] border border-[#454545] text-[#cccccc] px-2 py-1 text-[12px] w-[150px] rounded focus:outline-none"
+                                                        onchange="updateEditorSetting('cursorBlinking', this.value)">
+                                                        <option value="blink">blink</option>
+                                                        <option value="smooth">smooth</option>
+                                                        <option value="phase">phase</option>
+                                                        <option value="expand">expand</option>
+                                                        <option value="solid">solid</option>
+                                                    </select>
+                                                </div>
+                                                <div class="text-[#858585] text-[12px] mt-1 pl-[162px]">Controls the
+                                                    cursor animation style.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Right Editor Pane (Hidden by default) -->
                         <div id="editor-pane-right" class="hidden flex-1 relative min-w-0 border-l border-[#2b2b2b]">
                             <div id="monaco-editor-right" class="monaco-editor-container h-full w-full"></div>
-                            
+
                             <!-- Custom Extension UI (Right) -->
-                            <div id="extension-details-view-right" class="hidden absolute top-0 left-0 w-full h-full overflow-y-auto z-10 p-4 md:p-8 flex flex-col" style="background-color: var(--bg-editor);">
+                            <div id="extension-details-view-right"
+                                class="hidden absolute top-0 left-0 w-full h-full overflow-y-auto z-10 p-4 md:p-8 flex flex-col"
+                                style="background-color: var(--bg-editor);">
                                 <div class="max-w-[900px] w-full mx-auto select-text">
                                     <div class="flex gap-6 mb-8">
-                                        <div id="ext-icon-right" class="w-[100px] h-[100px] rounded shrink-0 border border-[#3c3c3c] bg-[#1a1a1a] flex items-center justify-center p-2"></div>
+                                        <div id="ext-icon-right"
+                                            class="w-[100px] h-[100px] rounded shrink-0 border border-[#3c3c3c] bg-[#1a1a1a] flex items-center justify-center p-2">
+                                        </div>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-baseline gap-3 mb-1">
-                                                <h1 id="ext-title-right" class="text-[26px] font-semibold text-[#cccccc] truncate">Extension</h1>
-                                                <span id="ext-version-right" class="text-[12px] text-[#858585]">v1.0.0</span>
+                                                <h1 id="ext-title-right"
+                                                    class="text-[26px] font-semibold text-[#cccccc] truncate">Extension
+                                                </h1>
+                                                <span id="ext-version-right"
+                                                    class="text-[12px] text-[#858585]">v1.0.0</span>
                                             </div>
                                             <div class="text-[13px] text-[#858585] mb-2 flex items-center gap-4">
-                                                <span id="ext-publisher-right" class="text-[#3794ff] cursor-pointer hover:underline">Publisher</span>
-                                                <span class="flex items-center gap-1.5"><i data-lucide="download" class="w-3.5 h-3.5"></i> <span id="ext-downloads-right">--</span></span>
-                                                <span class="flex items-center gap-1.5"><i data-lucide="star" class="w-3.5 h-3.5 text-[#e5b567]"></i> <span id="ext-rating-right">--</span></span>
-                                                <span class="flex items-center gap-1.5 border border-[#3c3c3c] px-1.5 uppercase text-[10px] rounded shrink-0">
+                                                <span id="ext-publisher-right"
+                                                    class="text-[#3794ff] cursor-pointer hover:underline">Publisher</span>
+                                                <span class="flex items-center gap-1.5"><i data-lucide="download"
+                                                        class="w-3.5 h-3.5"></i> <span
+                                                        id="ext-downloads-right">--</span></span>
+                                                <span class="flex items-center gap-1.5"><i data-lucide="star"
+                                                        class="w-3.5 h-3.5 text-[#e5b567]"></i> <span
+                                                        id="ext-rating-right">--</span></span>
+                                                <span
+                                                    class="flex items-center gap-1.5 border border-[#3c3c3c] px-1.5 uppercase text-[10px] rounded shrink-0">
                                                     <span id="ext-namespace-right">namespace</span>
                                                 </span>
-                                                <span id="ext-published-right" class="text-[12px] shrink-0 text-[#858585]">Recently</span>
+                                                <span id="ext-published-right"
+                                                    class="text-[12px] shrink-0 text-[#858585]">Recently</span>
                                             </div>
-                                            <div id="ext-description-right" class="text-[13px] text-[#cccccc] mb-5">...</div>
-                                            
-                                            <div class="flex gap-2 items-center" id="ext-actions-right">
-                                                <!-- Auto-populated buttons -->
+
+                                            <div id="ext-categories-right" class="flex gap-2 mb-3 flex-wrap"></div>
+
+                                            <div id="ext-description-right" class="text-[13px] text-[#cccccc] mb-5">...
+                                            </div>
+
+                                            <div class="flex gap-6 items-center">
+                                                <div class="flex gap-2 items-center" id="ext-actions-right">
+                                                    <!-- Auto-populated buttons -->
+                                                </div>
+                                                <label
+                                                    class="flex items-center gap-2 text-[11px] text-[#cccccc] cursor-pointer hover:text-white transition-colors"
+                                                    title="Auto-Update this extension">
+                                                    <input type="checkbox"
+                                                        class="w-3.5 h-3.5 rounded border-[#3c3c3c] bg-[#1e1e1e] text-[#007acc] focus:ring-0 cursor-pointer"
+                                                        id="ext-autoupdate-right" checked>
+                                                    Auto-Update
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    <div class="flex border-b border-[#3c3c3c] mb-6 select-none font-medium">
-                                        <div class="px-5 py-2.5 border-b-2 border-[#3794ff] text-[#cccccc] cursor-pointer text-[12px] tracking-wide">DETAILS</div>
-                                        <div class="px-5 py-2.5 border-b-2 border-transparent text-[#858585] hover:text-[#cccccc] cursor-pointer text-[12px] tracking-wide">FEATURE CONTRIBUTIONS</div>
-                                        <div class="px-5 py-2.5 border-b-2 border-transparent text-[#858585] hover:text-[#cccccc] cursor-pointer text-[12px] tracking-wide">CHANGELOG</div>
+
+                                    <div class="flex border-b border-[#3c3c3c] mb-6 select-none font-medium text-[12px] tracking-wide"
+                                        id="ext-tabs-right">
+                                        <div class="px-5 py-2.5 border-b-2 border-[#3794ff] text-[#cccccc] cursor-pointer"
+                                            onclick="switchExtTab('right', 'details')" id="ext-tab-details-right">
+                                            DETAILS</div>
+                                        <div class="px-5 py-2.5 border-b-2 border-transparent text-[#858585] hover:text-[#cccccc] cursor-pointer"
+                                            onclick="switchExtTab('right', 'features')" id="ext-tab-features-right">
+                                            FEATURE CONTRIBUTIONS</div>
+                                        <div class="px-5 py-2.5 border-b-2 border-transparent text-[#858585] hover:text-[#cccccc] cursor-pointer"
+                                            onclick="switchExtTab('right', 'changelog')" id="ext-tab-changelog-right">
+                                            CHANGELOG</div>
                                     </div>
-                                    
-                                    <div id="ext-content-right" class="pb-20 text-[#cccccc] text-[14px] leading-relaxed markdown-body">
+
+                                    <div id="ext-content-right"
+                                        class="pb-20 text-[#cccccc] text-[14px] leading-relaxed markdown-body">
                                         <!-- Markdown injected here -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Custom Settings View (Right) -->
+                            <div id="settings-view-right"
+                                class="hidden absolute top-0 left-0 w-full h-full overflow-y-auto z-10 p-8 flex flex-col"
+                                style="background-color: var(--bg-editor);">
+                                <div class="max-w-[700px] w-full select-text">
+                                    <h1 class="text-[24px] font-semibold text-[#cccccc] mb-6">Settings</h1>
+                                    <div class="mb-4">
+                                        <input type="text"
+                                            class="w-[400px] bg-[#3c3c3c] border border-[#454545] text-[#cccccc] px-3 py-1.5 text-[13px] rounded focus:outline-none focus:border-[#007acc]"
+                                            placeholder="Search settings">
+                                    </div>
+                                    <div class="flex flex-col gap-6 text-[#cccccc]">
+                                        <!-- Editor Setting Block -->
+                                        <div>
+                                            <h2
+                                                class="text-[18px] mb-3 text-[#cccccc] font-medium border-b border-[#3c3c3c] pb-1">
+                                                Text Editor</h2>
+
+                                            <div class="mb-5 pl-2">
+                                                <div class="flex items-center gap-3">
+                                                    <label class="text-[13px] font-medium w-[150px]">Word Wrap</label>
+                                                    <select id="setting-wordwrap-right"
+                                                        class="bg-[#3c3c3c] border border-[#454545] text-[#cccccc] px-2 py-1 text-[12px] w-[150px] rounded focus:outline-none"
+                                                        onchange="updateEditorSetting('wordWrap', this.value === 'on')">
+                                                        <option value="off">off</option>
+                                                        <option value="on">on</option>
+                                                    </select>
+                                                </div>
+                                                <div class="text-[#858585] text-[12px] mt-1 pl-[162px]">Controls how
+                                                    lines should wrap.</div>
+                                            </div>
+
+                                            <div class="mb-5 pl-2">
+                                                <div class="flex items-center gap-3">
+                                                    <label class="text-[13px] font-medium w-[150px]">Minimap</label>
+                                                    <input type="checkbox" id="setting-minimap-right"
+                                                        class="w-3.5 h-3.5 rounded border-[#3c3c3c] bg-[#1e1e1e] cursor-pointer"
+                                                        onchange="updateEditorSetting('minimap', this.checked)">
+                                                </div>
+                                                <div class="text-[#858585] text-[12px] mt-1 pl-[162px]">Controls whether
+                                                    the minimap is shown.</div>
+                                            </div>
+
+                                            <div class="mb-5 pl-2">
+                                                <div class="flex items-center gap-3">
+                                                    <label class="text-[13px] font-medium w-[150px]">Font Size</label>
+                                                    <input type="number" id="setting-fontsize-right"
+                                                        class="w-[150px] bg-[#3c3c3c] border border-[#454545] text-[#cccccc] px-2 py-1 text-[12px] rounded focus:outline-none"
+                                                        value="14" min="8" max="32"
+                                                        onchange="updateEditorSetting('fontSize', this.value)">
+                                                </div>
+                                                <div class="text-[#858585] text-[12px] mt-1 pl-[162px]">Controls the
+                                                    font size in pixels.</div>
+                                            </div>
+
+                                            <div class="mb-5 pl-2">
+                                                <div class="flex items-center gap-3">
+                                                    <label class="text-[13px] font-medium w-[150px]">Cursor
+                                                        Blinking</label>
+                                                    <select id="setting-blinking-right"
+                                                        class="bg-[#3c3c3c] border border-[#454545] text-[#cccccc] px-2 py-1 text-[12px] w-[150px] rounded focus:outline-none"
+                                                        onchange="updateEditorSetting('cursorBlinking', this.value)">
+                                                        <option value="blink">blink</option>
+                                                        <option value="smooth">smooth</option>
+                                                        <option value="phase">phase</option>
+                                                        <option value="expand">expand</option>
+                                                        <option value="solid">solid</option>
+                                                    </select>
+                                                </div>
+                                                <div class="text-[#858585] text-[12px] mt-1 pl-[162px]">Controls the
+                                                    cursor animation style.</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -756,7 +1019,7 @@
                 <div
                     class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors bg-[rgba(255,255,255,0.1)]">
                     <i data-lucide="network" class="w-3.5 h-3.5"></i>
-                    <span>><< /span>
+                    <span></span>
                 </div>
                 <div
                     class="flex items-center gap-1 hover:bg-[rgba(255,255,255,0.2)] px-2 h-full cursor-pointer transition-colors">
@@ -812,11 +1075,11 @@
                             <path d="M17.5 3l-6 5.5-3-2.5-4 3 13 11 6-5V3l-6 5.5z" />
                         </svg>
                         <h2 class="text-xl font-light text-white mb-1">Visual Studio Code</h2>
-                        <p class="text-[#858585] text-[12px] mb-4">Web Edition - Version 3.0</p>
+                        <p class="text-[#858585] text-[12px] mb-4">Web Edition - Version 4.0</p>
                         <div class="text-[11px] text-[#858585] space-y-1">
-                            <p>Built with Tailwind CSS, Lucide Icons</p>
+                            <p>Built using Html, CSS, JavaScript</p>
                             <p>Powered by Monaco Editor & xterm.js</p>
-                            <p class="mt-4 italic">"Editing evolved."</p>
+                            <p class="mt-4 italic">"made by praise ikebuwa."</p>
                         </div>
                     </div>
                 </div>
@@ -1024,12 +1287,13 @@ console.log("Ready!");`
             // Persistence Functions
             function saveState() {
                 const state = {
-                    fileSystem, currentFile, openFiles, currentTheme,
+                    fileSystem, baseFileSystem, currentFile, openFiles, currentTheme,
                     currentAccent, currentSoundProfile, frostySettings,
                     recentFiles, editorSettings, particlesEnabled,
                     installedExtensionsList
                 };
                 localStorage.setItem('vscode-clone-state', JSON.stringify(state));
+                if (typeof updateGitDiff === 'function') updateGitDiff();
             }
 
             function loadState() {
@@ -1046,6 +1310,7 @@ console.log("Ready!");`
                         frostySettings = parsed.frostySettings || { blur: 20, opacity: 0.7, accent: '#007acc' };
                         recentFiles = parsed.recentFiles || [];
                         installedExtensionsList = parsed.installedExtensionsList || [];
+                        baseFileSystem = parsed.baseFileSystem || JSON.parse(JSON.stringify(fileSystem));
                         if (parsed.editorSettings) editorSettings = parsed.editorSettings;
                         if (parsed.particlesEnabled !== undefined) particlesEnabled = parsed.particlesEnabled;
 
@@ -1241,6 +1506,48 @@ console.log("Ready!");`
                         break;
                     case 'whoami':
                         terminal.writeln('vscode-clone-user');
+                        break;
+                    case 'mkdir':
+                        if (args.length === 0) terminal.writeln('Usage: mkdir [directory]');
+                        else {
+                            const newDir = args[0];
+                            fileSystem[`${newDir}/.keep`] = {
+                                language: 'plaintext',
+                                iconColor: 'text-[#cccccc]',
+                                lucideIcon: 'file-text',
+                                content: ''
+                            };
+                            expandedFolders.add(newDir);
+                            saveState();
+                            renderFileTree();
+                        }
+                        break;
+                    case 'echo':
+                        if (args.length === 0) terminal.writeln('');
+                        else if (args.includes('>')) {
+                            const idx = args.indexOf('>');
+                            const file = args[idx + 1];
+                            const contentStr = args.slice(0, idx).join(' ') || '';
+                            const content = contentStr.replace(/^['"](.*)['"]$/, '$1');
+                            if (file) {
+                                fileSystem[file] = {
+                                    language: getFileConfig(file.split('.').pop() || 'txt').language,
+                                    lucideIcon: getFileConfig(file.split('.').pop() || 'txt').lucideIcon,
+                                    iconColor: getFileConfig(file.split('.').pop() || 'txt').iconColor,
+                                    content: content
+                                };
+                                saveState();
+                                renderFileTree();
+                            } else {
+                                terminal.writeln('sh: parse error near `>\'');
+                            }
+                        } else {
+                            terminal.writeln(args.join(' '));
+                        }
+                        break;
+                    case 'cd':
+                        if (args.length === 0) terminal.writeln('');
+                        else terminal.writeln('Mock terminal: directory traversal is fake. Assume success.');
                         break;
                     default:
                         terminal.writeln(`sh: command not found: ${command}`);
@@ -1637,22 +1944,32 @@ console.log("Ready!");`
 
                 const editor = getActiveEditor();
                 const fileData = fileSystem[filename];
-                
                 const paneId = activePane === 'left' ? 'extension-details-view-left' : 'extension-details-view-right';
+                const settingsPaneId = activePane === 'left' ? 'settings-view-left' : 'settings-view-right';
                 const monacoId = activePane === 'left' ? 'monaco-editor-left' : 'monaco-editor-right';
                 const monacoContainer = document.getElementById(monacoId);
                 const extContainer = document.getElementById(paneId);
-                
+                const settingsContainer = document.getElementById(settingsPaneId);
+
                 if (fileData.language === 'extension-details') {
-                    if(monacoContainer) monacoContainer.classList.add('hidden');
-                    if(extContainer) {
+                    if (monacoContainer) monacoContainer.classList.add('hidden');
+                    if (settingsContainer) settingsContainer.classList.add('hidden');
+                    if (extContainer) {
                         extContainer.classList.remove('hidden');
                         renderExtensionView(fileData.extensionData, fileData.content, activePane);
                     }
+                } else if (fileData.language === 'settings') {
+                    if (monacoContainer) monacoContainer.classList.add('hidden');
+                    if (extContainer) extContainer.classList.add('hidden');
+                    if (settingsContainer) {
+                        settingsContainer.classList.remove('hidden');
+                        renderSettingsView(activePane);
+                    }
                 } else {
-                    if(monacoContainer) monacoContainer.classList.remove('hidden');
-                    if(extContainer) extContainer.classList.add('hidden');
-                    
+                    if (monacoContainer) monacoContainer.classList.remove('hidden');
+                    if (extContainer) extContainer.classList.add('hidden');
+                    if (settingsContainer) settingsContainer.classList.add('hidden');
+
                     if (editor) {
                         const model = editor.getModel();
                         monaco.editor.setModelLanguage(model, fileData.language);
@@ -1867,7 +2184,7 @@ console.log("Ready!");`
             }
 
             function switchSidebarTab(tab) {
-                const tabs = ['explorer', 'search', 'extensions', 'settings'];
+                const tabs = ['explorer', 'search', 'scm', 'extensions', 'settings'];
                 tabs.forEach(t => {
                     const el = document.getElementById(`tab-${t}`);
                     const icon = document.getElementById(`activity-${t}`);
@@ -1886,6 +2203,68 @@ console.log("Ready!");`
                 if (tab === 'search') document.getElementById('global-search-input').focus();
                 lucide.createIcons();
             }
+
+            // --- SCM (Source Control) Logic ---
+            let baseFileSystem = null;
+
+            function updateGitDiff() {
+                if (!baseFileSystem) return;
+                const changesList = document.getElementById('scm-changes-list');
+                const countBadge = document.getElementById('scm-changes-count');
+                if (!changesList) return;
+
+                let changes = [];
+                Object.keys(fileSystem).forEach(filename => {
+                    if (filename.includes('VSCODE-CLONE')) return;
+                    if (!baseFileSystem[filename]) {
+                        changes.push({ name: filename, type: 'U', color: 'text-[#73c991]' });
+                    } else if (fileSystem[filename].content !== baseFileSystem[filename].content) {
+                        changes.push({ name: filename, type: 'M', color: 'text-[#e2c08d]' });
+                    }
+                });
+                Object.keys(baseFileSystem).forEach(filename => {
+                    if (filename.includes('VSCODE-CLONE')) return;
+                    if (!fileSystem[filename]) {
+                        changes.push({ name: filename, type: 'D', color: 'text-[#f14c4c]' });
+                    }
+                });
+
+                countBadge.innerText = changes.length;
+                if (changes.length > 0) {
+                    changesList.innerHTML = changes.map(c => `
+                        <div class="flex items-center justify-between px-6 py-1 cursor-pointer hover:bg-[rgba(255,255,255,0.05)] text-[#cccccc]" onclick="switchFile('\${c.name}')">
+                            <div class="flex items-center gap-1.5 truncate">
+                                <i data-lucide="\${fileSystem[c.name] ? fileSystem[c.name].lucideIcon : 'file-minus'}" class="w-3.5 h-3.5 \${fileSystem[c.name] ? fileSystem[c.name].iconColor : 'text-[#858585]'}"></i>
+                                <span class="truncate">\${c.name}</span>
+                            </div>
+                            <span class="font-mono font-bold text-[10px] \${c.color}">\${c.type}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    changesList.innerHTML = '<div class="px-6 py-2 text-[#858585] italic text-[11px]">No changes detected.</div>';
+                }
+                
+                lucide.createIcons();
+            }
+
+            function commitChanges() {
+                const input = document.getElementById('scm-commit-input');
+                if (!input.value.trim()) {
+                    showTerminal();
+                    if (terminal) terminal.writeln('\\x1b[1;33mPlease enter a commit message.\\x1b[0m');
+                    return;
+                }
+                
+                baseFileSystem = JSON.parse(JSON.stringify(fileSystem));
+                input.value = '';
+                updateGitDiff();
+                saveState();
+                
+                showTerminal();
+                if (terminal) terminal.writeln('\\x1b[1;32m>> Committed changes locally.\\x1b[0m');
+                SoundEngine.play('pop');
+            }
+            // --- END SCM Logic ---
 
             // Global Search Logic
             document.getElementById('global-search-input').addEventListener('input', (e) => {
@@ -2538,7 +2917,7 @@ console.log("Ready!");`
             const extensionInput = document.getElementById('extension-search-input');
             const extensionsContainer = document.getElementById('extensions-list-container');
             const extensionsTitle = document.getElementById('extensions-list-title');
-            
+
             let recommendedExtensionsList = [];
 
             if (extensionInput) {
@@ -2550,11 +2929,11 @@ console.log("Ready!");`
                         renderDefaultExtensionsView();
                         return;
                     }
-                    
+
                     extensionsTitle.innerText = "SEARCHING...";
                     extensionsContainer.innerHTML = '<div class="text-[#858585] text-[11px] p-2 italic flex items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 mt-0.5 animate-spin"></i> Fetching...</div>';
                     lucide.createIcons();
-                    
+
                     extensionSearchTimeout = setTimeout(() => {
                         searchOpenVSX(query);
                     }, 500);
@@ -2568,8 +2947,8 @@ console.log("Ready!");`
                         const data = await response.json();
                         recommendedExtensionsList = data.extensions;
                     }
-                } catch(e) {}
-                
+                } catch (e) { }
+
                 if (!extensionInput || !extensionInput.value.trim()) {
                     renderDefaultExtensionsView();
                 }
@@ -2578,13 +2957,13 @@ console.log("Ready!");`
             function renderDefaultExtensionsView() {
                 extensionsTitle.innerText = "";
                 extensionsContainer.innerHTML = '';
-                
+
                 if (installedExtensionsList.length > 0) {
                     const installedHeader = document.createElement('h3');
                     installedHeader.className = "text-[11px] font-bold text-[#858585] px-2 mb-2 mt-2 uppercase tracking-widest";
                     installedHeader.innerText = "INSTALLED";
                     extensionsContainer.appendChild(installedHeader);
-                    
+
                     installedExtensionsList.forEach(ext => {
                         extensionsContainer.appendChild(createExtensionElement(ext, true));
                     });
@@ -2595,7 +2974,7 @@ console.log("Ready!");`
                     recHeader.className = "text-[11px] font-bold text-[#858585] px-2 mb-2 mt-4 uppercase tracking-widest";
                     recHeader.innerText = "RECOMMENDED";
                     extensionsContainer.appendChild(recHeader);
-                    
+
                     recommendedExtensionsList.forEach(ext => {
                         const isInst = installedExtensionsList.some(i => i.namespace === ext.namespace && i.name === ext.name);
                         extensionsContainer.appendChild(createExtensionElement(ext, isInst));
@@ -2610,12 +2989,12 @@ console.log("Ready!");`
                 const iconUrl = ext.files && ext.files.icon ? ext.files.icon : '';
                 const div = document.createElement('div');
                 div.className = 'flex items-start gap-3 p-2 hover:bg-[rgba(255,255,255,0.05)] cursor-pointer rounded transition-colors';
-                
+
                 let fallbackIcon = `<div class="w-10 h-10 bg-gray-700 rounded flex items-center justify-center shrink-0"><i data-lucide="package" class="text-[#cccccc] w-5 h-5"></i></div>`;
-                const imgHtml = iconUrl 
-                     ? `<img src="${iconUrl}" class="w-10 h-10 rounded shrink-0 bg-[#ffffff10]" onerror="this.outerHTML='<div class=\\'w-10 h-10 bg-gray-700 rounded flex items-center justify-center shrink-0\\'><i data-lucide=\\'package\\' class=\\'text-[#cccccc] w-5 h-5\\'></i></div>'" />`
-                     : fallbackIcon;
-                
+                const imgHtml = iconUrl
+                    ? `<img src="${iconUrl}" class="w-10 h-10 rounded shrink-0 bg-[#ffffff10]" onerror="this.outerHTML='<div class=\\'w-10 h-10 bg-gray-700 rounded flex items-center justify-center shrink-0\\'><i data-lucide=\\'package\\' class=\\'text-[#cccccc] w-5 h-5\\'></i></div>'" />`
+                    : fallbackIcon;
+
                 let buttonHtml = '';
                 if (alreadyInstalled) {
                     buttonHtml = `<button class="text-[10px] text-[#cccccc] bg-transparent border border-[#3c3c3c] px-2 py-0.5 rounded ml-2 font-medium focus:outline-none">Installed</button>`;
@@ -2634,7 +3013,7 @@ console.log("Ready!");`
                         </div>
                     </div>
                 `;
-                
+
                 div.onclick = () => openExtensionDetails(ext);
 
                 const installBtn = div.querySelector('.install-btn');
@@ -2678,16 +3057,16 @@ console.log("Ready!");`
             async function openExtensionDetails(ext) {
                 const readmeUrl = ext.files && ext.files.readme ? ext.files.readme : `https://open-vsx.org/api/${ext.namespace}/${ext.name}/${ext.version}/file/extension/README.md`;
                 const filename = `Extension: ${ext.displayName || ext.name}.md`;
-                
+
                 showTerminal();
                 if (window.terminal) {
                     window.terminal.writeln(`\x1b[1;36m>> Opening ${filename}...\x1b[0m`);
                 }
-                
+
                 try {
                     const res = await fetch(readmeUrl);
                     const content = res.ok ? await res.text() : "# No README Available\n\nThe extension author did not provide a README or it could not be fetched.";
-                    
+
                     fileSystem[filename] = {
                         language: 'extension-details',
                         iconColor: 'text-[#007acc]',
@@ -2695,10 +3074,10 @@ console.log("Ready!");`
                         content: content,
                         extensionData: ext
                     };
-                    
+
                     saveState();
                     switchFile(filename);
-                    if (!isPreviewOpen) togglePreview(); 
+                    if (!isPreviewOpen) togglePreview();
                 } catch (err) {
                     if (window.terminal) window.terminal.writeln(`\x1b[1;31mError fetching README: ${err.message}\x1b[0m`);
                 }
@@ -2706,10 +3085,10 @@ console.log("Ready!");`
 
             function renderExtensionView(ext, readmeContent, side) {
                 const icon = ext.files && ext.files.icon ? ext.files.icon : '';
-                document.getElementById(`ext-icon-${side}`).innerHTML = icon 
-                    ? `<img src="${icon}" class="w-full h-full object-contain rounded" />` 
+                document.getElementById(`ext-icon-${side}`).innerHTML = icon
+                    ? `<img src="${icon}" class="w-full h-full object-contain rounded" />`
                     : `<i data-lucide="package" class="w-12 h-12 text-[#858585]"></i>`;
-                
+
                 document.getElementById(`ext-title-${side}`).innerText = ext.displayName || ext.name;
                 document.getElementById(`ext-version-${side}`).innerText = `v${ext.version || '1.0.0'}`;
                 document.getElementById(`ext-publisher-${side}`).innerText = ext.publisher?.displayName || ext.namespace || 'Unknown Publisher';
@@ -2717,16 +3096,16 @@ console.log("Ready!");`
                 document.getElementById(`ext-rating-${side}`).innerText = ext.averageRating ? ext.averageRating.toFixed(1) : '--';
                 document.getElementById(`ext-namespace-${side}`).innerText = `${ext.namespace}.${ext.name}`;
                 document.getElementById(`ext-description-${side}`).innerText = ext.description || '';
-                
+
                 const publishedDate = ext.timestamp ? new Date(ext.timestamp) : new Date();
                 const yearsAgo = Math.max(0, new Date().getFullYear() - publishedDate.getFullYear());
                 const timeString = yearsAgo === 0 ? "Updated Recently" : `Updated ${yearsAgo} year${yearsAgo === 1 ? '' : 's'} ago`;
                 const publishedEl = document.getElementById(`ext-published-${side}`);
                 if (publishedEl) publishedEl.innerText = timeString;
-                
+
                 const actionsContainer = document.getElementById(`ext-actions-${side}`);
                 const isInstalled = installedExtensionsList.some(i => i.namespace === ext.namespace && i.name === ext.name);
-                
+
                 if (isInstalled) {
                     actionsContainer.innerHTML = `
                         <button class="bg-[#2b2b2b] hover:bg-[#323232] text-[#cccccc] border border-[#3c3c3c] px-4 py-1.5 rounded-sm text-[12px] font-bold transition-colors">Disable</button>
@@ -2740,12 +3119,89 @@ console.log("Ready!");`
                         installExtensionVSIX(ext, e.target);
                     };
                 }
-                
+
                 const contentContainer = document.getElementById(`ext-content-${side}`);
                 if (typeof marked !== 'undefined') {
                     contentContainer.innerHTML = marked.parse(readmeContent);
                 } else {
                     contentContainer.innerHTML = `<pre class="whitespace-pre-wrap">${readmeContent}</pre>`;
+                }
+
+                // Categories
+                const categoriesContainer = document.getElementById(`ext-categories-${side}`);
+                if (categoriesContainer) {
+                    const categories = ext.categories || ext.tags || [ext.namespace.toLowerCase()];
+                    categoriesContainer.innerHTML = categories.slice(0, 5).map(c =>
+                        `<span class="bg-[#2b2b2b] text-[#cccccc] px-3 py-0.5 rounded-full text-[11px] font-medium border border-[#3c3c3c] hover:bg-[#323232] cursor-pointer transition-colors shadow-sm">${c}</span>`
+                    ).join('');
+                }
+
+                lucide.createIcons();
+            }
+
+            function switchExtTab(side, tabName) {
+                ['details', 'features', 'changelog'].forEach(t => {
+                    const el = document.getElementById(`ext-tab-${t}-${side}`);
+                    if (!el) return;
+                    if (t === tabName) {
+                        el.className = "px-5 py-2.5 border-b-2 border-[#3794ff] text-[#cccccc] cursor-pointer transition-colors";
+                    } else {
+                        el.className = "px-5 py-2.5 border-b-2 border-transparent text-[#858585] hover:text-[#cccccc] cursor-pointer transition-colors";
+                    }
+                });
+
+                const contentContainer = document.getElementById(`ext-content-${side}`);
+                const filename = side === 'left' ? leftFile : rightFile;
+                if (!filename || !fileSystem[filename]) return;
+
+                const fileObj = fileSystem[filename];
+                const ext = fileObj.extensionData;
+
+                if (tabName === 'details') {
+                    if (typeof marked !== 'undefined') {
+                        contentContainer.innerHTML = marked.parse(fileObj.content || '');
+                    } else {
+                        contentContainer.innerHTML = `<pre class="whitespace-pre-wrap">${fileObj.content}</pre>`;
+                    }
+                } else if (tabName === 'features') {
+                    contentContainer.innerHTML = `
+                        <div class="p-6 bg-[#1e1e1e] border border-[#3c3c3c] rounded-md mb-4 shadow-sm">
+                            <h2 class="text-white text-lg font-semibold mb-2">Feature Contributions</h2>
+                            <p class="text-[#858585] mb-4">This extension contributes the following capabilities to VS Code:</p>
+                            <ul class="list-disc leading-relaxed text-[#cccccc] ml-5 mb-2">
+                                <li><strong>Themes:</strong> Loaded during installation lifecycle.</li>
+                                <li><strong>Commands:</strong> Parsed dynamically from package payload on execution.</li>
+                                <li><strong>Languages:</strong> Syntax highlighting definitions extended.</li>
+                            </ul>
+                            <div class="mt-6 p-4 bg-[#2b2b2b] rounded flex items-start gap-4 border border-[#3c3c3c]">
+                                <i data-lucide="info" class="w-5 h-5 text-[#3794ff] shrink-0 mt-0.5"></i>
+                                <span class="text-[13px] text-[#cccccc] leading-relaxed">A full API lookup of the physical <code>package.json</code> is required to populate the exact command tree. This is normally resolved natively when the VSIX is decompressed.</span>
+                            </div>
+                        </div>
+                    `;
+                } else if (tabName === 'changelog') {
+                    contentContainer.innerHTML = `
+                        <div class="p-6 bg-[#1e1e1e] border border-[#3c3c3c] rounded-md mb-4 shadow-sm">
+                            <h2 class="text-white text-lg font-semibold mb-2">Changelog</h2>
+                            <p class="text-[#858585] mb-4">Recent updates for <strong>${ext.displayName || ext.name}</strong>:</p>
+                            <div class="border-l-2 border-[#3c3c3c] pl-5 ml-2 mt-4 space-y-6">
+                                <div>
+                                    <div class="text-[#3794ff] font-semibold text-sm mb-1">v${ext.version || '1.0.0'}</div>
+                                    <ul class="list-disc ml-4 text-[13px] text-[#cccccc] space-y-1.5 mt-2">
+                                        <li>Performance improvements and bug fixes.</li>
+                                        <li>Updated upstream dependencies.</li>
+                                        <li>API compatibility checks resolved.</li>
+                                    </ul>
+                                </div>
+                                <div class="opacity-60 pt-2 border-t border-[#3c3c3c]/50">
+                                    <div class="text-[#858585] font-semibold text-sm mb-1 mt-2">Older Versions</div>
+                                    <ul class="list-disc ml-4 text-[13px] text-[#cccccc] space-y-1 mt-2">
+                                        <li>Initial scaffolding and stable API releases.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
                 lucide.createIcons();
             }
@@ -2755,7 +3211,7 @@ console.log("Ready!");`
                     installedExtensionsList = installedExtensionsList.filter(i => !(i.namespace === namespace && i.name === name));
                     saveState();
                     renderDefaultExtensionsView();
-                    
+
                     if (leftFile && fileSystem[leftFile] && fileSystem[leftFile].language === 'extension-details') {
                         renderExtensionView(fileSystem[leftFile].extensionData, fileSystem[leftFile].content, 'left');
                     }
@@ -2767,10 +3223,10 @@ console.log("Ready!");`
 
             async function installExtensionVSIX(ext, btn) {
                 if (btn.innerText === "Installed!") return;
-                
+
                 btn.innerText = "Installing...";
                 btn.className = "text-[10px] text-[#cccccc] bg-transparent border border-[#3c3c3c] px-2 py-0.5 rounded ml-2 font-medium";
-                
+
                 showTerminal();
                 if (window.terminal) {
                     window.terminal.writeln(`\x1b[1;36m>> Downloading VSIX package for ${ext.displayName || ext.name}...\x1b[0m`);
@@ -2780,23 +3236,23 @@ console.log("Ready!");`
                     const downloadUrl = ext.files.download;
                     const res = await fetch(downloadUrl);
                     if (!res.ok) throw new Error(`Failed to download VSIX (${res.status})`);
-                    
+
                     const blob = await res.blob();
-                    
+
                     if (window.terminal) window.terminal.writeln(`\x1b[1;36m>> Extracting VSIX package (JSZip)...\x1b[0m`);
                     const zip = new JSZip();
                     await zip.loadAsync(blob);
-                    
+
                     const pkgFile = zip.file("extension/package.json");
                     if (!pkgFile) throw new Error("No package.json found in VSIX.");
-                    
+
                     const pkgRaw = await pkgFile.async("string");
                     const pkg = JSON.parse(pkgRaw);
-                    
+
                     let installedCount = 0;
-                    
+
                     if (window.terminal) window.terminal.writeln(`\x1b[1;32m>> Found extension definition. Checking contributions...\x1b[0m`);
-                    
+
                     if (pkg.contributes && pkg.contributes.themes) {
                         for (let t of pkg.contributes.themes) {
                             let cleanPath = t.path.replace(/^\.\//, '');
@@ -2807,7 +3263,7 @@ console.log("Ready!");`
                                     const themeJson = new Function("return " + themeRaw)();
                                     const safeThemeId = (t.label || t.id || 'unknown').replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase();
                                     const themeName = `theme-${safeThemeId}`;
-                                    
+
                                     monaco.editor.defineTheme(themeName, {
                                         base: (t.uiTheme === 'vs-dark' || t.uiTheme === 'hc-black') ? 'vs-dark' : 'vs',
                                         inherit: true,
@@ -2819,24 +3275,24 @@ console.log("Ready!");`
                                         }).filter(r => r.foreground) : [],
                                         colors: themeJson.colors || {}
                                     });
-                                    
+
                                     if (window.terminal) window.terminal.writeln(`\x1b[1;32m>> Loaded Theme: ${t.label || t.id}\x1b[0m`);
-                                    
+
                                     topMenus['Theme'].push({
                                         label: `Theme: ${t.label || t.id}`,
                                         action: () => {
-                                            currentTheme = themeName; 
+                                            currentTheme = themeName;
                                             monaco.editor.setTheme(currentTheme);
                                             saveState();
                                         }
                                     });
-                                    
+
                                     fileSystem[`.extensions/themes/${themeName}.json`] = {
                                         language: 'json',
                                         content: themeRaw
                                     };
                                     saveState();
-                                    
+
                                     installedCount++;
                                 } catch (e) {
                                     if (window.terminal) window.terminal.writeln(`\x1b[1;33m>> Warning: Failed to parse theme ${t.label} (${e.message})\x1b[0m`);
@@ -2862,13 +3318,13 @@ console.log("Ready!");`
                                         });
                                     });
                                     if (window.terminal) window.terminal.writeln(`\x1b[1;32m>> Loaded Snippets for: ${s.language}\x1b[0m`);
-                                    
+
                                     fileSystem[`.extensions/snippets/${s.language}.json`] = {
                                         language: 'json',
                                         content: snippetRaw
                                     };
                                     saveState();
-                                    
+
                                     installedCount++;
                                 } catch (e) {
                                     if (window.terminal) window.terminal.writeln(`\x1b[1;33m>> Warning: Failed to parse snippet ${s.language} (${e.message})\x1b[0m`);
@@ -2882,13 +3338,13 @@ console.log("Ready!");`
                             installedExtensionsList.push(ext);
                             saveState();
                         }
-                        
+
                         btn.innerText = "Installed!";
                         if (window.terminal) {
                             window.terminal.writeln(`\x1b[1;32m>> Installation successful! Check the 'Theme' menu for new themes.\x1b[0m`);
                             window.terminal.write(PROMPT);
                         }
-                        
+
                         setTimeout(() => {
                             if (!extensionInput.value.trim()) renderDefaultExtensionsView();
                             else {
@@ -3133,6 +3589,10 @@ console.log("Ready!");`
             require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
 
             require(['vs/editor/editor.main'], function () {
+                // Initialize Emmet
+                emmetMonaco.emmetHTML(monaco);
+                emmetMonaco.emmetCSS(monaco);
+
                 // Setup custom VS Code Dark Theme overrides
                 monaco.editor.defineTheme('vscode-clone-dark', {
                     base: 'vs-dark',
@@ -3218,7 +3678,7 @@ console.log("Ready!");`
                             const themeRaw = fileSystem[filepath].content;
                             const themeJson = new Function("return " + themeRaw)();
                             const themeId = filepath.split('/').pop().replace('.json', '');
-                            
+
                             monaco.editor.defineTheme(themeId, {
                                 base: (themeJson.uiTheme === 'vs-dark' || themeJson.uiTheme === 'hc-black') ? 'vs-dark' : 'vs',
                                 inherit: true,
@@ -3228,16 +3688,16 @@ console.log("Ready!");`
                                 }).filter(r => r.foreground) : [],
                                 colors: themeJson.colors || {}
                             });
-                            
+
                             topMenus['Theme'].push({
                                 label: `Theme: ${themeJson.name || themeId.replace('theme-', '')}`,
                                 action: () => {
-                                    currentTheme = themeId; 
+                                    currentTheme = themeId;
                                     monaco.editor.setTheme(currentTheme);
                                     saveState();
                                 }
                             });
-                        } catch(e) { console.warn("Failed to rehydrate theme:", filepath); }
+                        } catch (e) { console.warn("Failed to rehydrate theme:", filepath); }
                     } else if (filepath.startsWith('.extensions/snippets/')) {
                         try {
                             const snippetRaw = fileSystem[filepath].content;
@@ -3250,7 +3710,7 @@ console.log("Ready!");`
                                     detail: snippet.description || k
                                 });
                             });
-                        } catch(e) { console.warn("Failed to rehydrate snippet:", filepath); }
+                        } catch (e) { console.warn("Failed to rehydrate snippet:", filepath); }
                     }
                 });
 
@@ -3350,11 +3810,11 @@ console.log("Ready!");`
             function showFileContextMenu(e, filepath) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 contextMenuTargetFile = filepath;
                 const menu = document.getElementById('file-context-menu');
                 menu.classList.remove('hidden');
-                
+
                 // Handle "Compare with Selected" visibility
                 const compareWithMenu = document.getElementById('ctx-compare-with');
                 if (window.compareSelectedFile && window.compareSelectedFile !== filepath) {
@@ -3365,15 +3825,15 @@ console.log("Ready!");`
                 } else {
                     if (compareWithMenu) compareWithMenu.classList.add('hidden');
                 }
-                
+
                 let x = e.clientX;
                 let y = e.clientY;
-                
+
                 // Keep the menu inside the viewport
                 const rect = menu.getBoundingClientRect();
                 if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 5;
                 if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 5;
-                
+
                 menu.style.left = `${x}px`;
                 menu.style.top = `${y}px`;
             }
@@ -3393,11 +3853,11 @@ console.log("Ready!");`
 
             function handleContextMenuAction(action) {
                 const menu = document.getElementById('file-context-menu');
-                if(menu) menu.classList.add('hidden');
-                
+                if (menu) menu.classList.add('hidden');
+
                 if (!contextMenuTargetFile) return;
                 const filepath = contextMenuTargetFile;
-                
+
                 if (action === 'openSide') {
                     switchFile(filepath);
                     const rightHidden = document.getElementById('editor-pane-right').classList.contains('hidden');
@@ -3471,10 +3931,10 @@ console.log("Ready!");`
                         if (rightHidden) toggleSplitEditor();
                         activePane = 'right';
                         switchFile(fileB);
-                        
+
                         // Clear selection
                         window.compareSelectedFile = null;
-                        
+
                         if (window.terminal) {
                             showTerminal();
                             window.terminal.writeln(`\x1b[1;36m>> Comparing '${fileA}' (Left) with '${fileB}' (Right)\x1b[0m`);
@@ -3504,36 +3964,36 @@ console.log("Ready!");`
             function showFolderContextMenu(e, folderpath) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 contextMenuTargetFolder = folderpath;
                 const menu = document.getElementById('folder-context-menu');
                 menu.classList.remove('hidden');
-                
+
                 let x = e.clientX;
                 let y = e.clientY;
-                
+
                 const rect = menu.getBoundingClientRect();
                 if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 5;
                 if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 5;
-                
+
                 menu.style.left = `${x}px`;
                 menu.style.top = `${y}px`;
             }
 
             function handleFolderContextMenuAction(action) {
                 const menu = document.getElementById('folder-context-menu');
-                if(menu) menu.classList.add('hidden');
-                
+                if (menu) menu.classList.add('hidden');
+
                 if (contextMenuTargetFolder === null) return;
                 const folderpath = contextMenuTargetFolder;
-                
+
                 if (action === 'newFile') {
                     const prefix = folderpath ? folderpath + '/' : '';
                     const filename = prompt('Enter new file name:', prefix);
                     if (filename && !fileSystem[filename]) {
                         const ext = filename.split('.').pop().toLowerCase();
                         const config = getFileConfig(ext) || { language: 'plaintext', iconColor: 'text-[#cccccc]', lucideIcon: 'file-text' };
-                        
+
                         fileSystem[filename] = {
                             language: config.language,
                             iconColor: config.iconColor,
@@ -3602,73 +4062,361 @@ console.log("Ready!");`
                     navigator.clipboard.writeText(text);
                 }
             }
+
+            // --- Drag and Drop File Import ---
+            window.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+
+            window.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                showTerminal();
+                if (window.terminal) window.terminal.writeln(`\x1b[1;36m>> Importing Workspace files via Drag-and-Drop...\x1b[0m`);
+
+                const items = e.dataTransfer.items;
+                const promises = [];
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.webkitGetAsEntry) {
+                        const entry = item.webkitGetAsEntry();
+                        if (entry) {
+                            promises.push(traverseFileTree(entry, ''));
+                        }
+                    }
+                }
+
+                await Promise.all(promises);
+                saveState();
+                renderFileTree();
+
+                if (window.terminal) window.terminal.writeln(`\x1b[1;32m>> Import complete. Re-rendered virtual workspace.\x1b[0m`);
+            });
+
+            async function traverseFileTree(item, path) {
+                return new Promise((resolve) => {
+                    path = path || "";
+                    if (item.isFile) {
+                        item.file((file) => {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                const fullPath = path + file.name;
+                                const ext = file.name.split('.').pop().toLowerCase();
+                                const config = getFileConfig(ext);
+                                fileSystem[fullPath] = {
+                                    language: config.language,
+                                    lucideIcon: config.lucideIcon,
+                                    iconColor: config.iconColor,
+                                    content: e.target.result
+                                };
+                                const folderPath = fullPath.split('/').slice(0, -1).join('/');
+                                if (folderPath) expandedFolders.add(folderPath);
+                                resolve();
+                            };
+                            reader.readAsText(file);
+                        });
+                    } else if (item.isDirectory) {
+                        const dirReader = item.createReader();
+                        const nextPath = path + item.name + "/";
+                        expandedFolders.add(path + item.name);
+                        dirReader.readEntries(async (entries) => {
+                            const p = [];
+                            for (let i = 0; i < entries.length; i++) {
+                                p.push(traverseFileTree(entries[i], nextPath));
+                            }
+                            await Promise.all(p);
+                            resolve();
+                        });
+                    }
+                });
+            }
+
+            // --- Command Palette ---
+            const commandsList = [
+                { id: 'settings.open', label: 'Preferences: Open Workspace Settings', icon: 'settings', action: openSettingsUI },
+                { id: 'file.new', label: 'File: New File', icon: 'file-plus', action: createNewFile },
+                { id: 'folder.new', label: 'File: New Folder', icon: 'folder-plus', action: createNewFolder },
+                { id: 'editor.format', label: 'Format Document', icon: 'code', action: () => { const e = getActiveEditor(); if (e) e.getAction('editor.action.formatDocument').run(); } },
+                { id: 'terminal.toggle', label: 'View: Toggle Terminal', icon: 'terminal', action: toggleTerminal },
+                { id: 'sidebar.toggle', label: 'View: Toggle Primary Side Bar', icon: 'layout-sidebar', action: toggleSidebar },
+                { id: 'split.editor', label: 'View: Split Editor', icon: 'columns', action: toggleSplitEditor }
+            ];
+
+            let cmdVisible = false;
+            let cmdFiltered = [];
+            let cmdIndex = 0;
+
+            function toggleCommandPalette() {
+                const overlay = document.getElementById('command-palette-overlay');
+                const input = document.getElementById('cmd-input');
+                if (!overlay || !input) return;
+
+                cmdVisible = !cmdVisible;
+                if (cmdVisible) {
+                    overlay.classList.remove('hidden');
+                    input.value = '';
+                    renderCommands('');
+                    setTimeout(() => input.focus(), 50);
+                } else {
+                    overlay.classList.add('hidden');
+                    const editor = getActiveEditor();
+                    if (editor) editor.focus();
+                }
+            }
+
+            function renderCommands(query) {
+                const list = document.getElementById('cmd-list');
+                const lower = query.toLowerCase();
+                cmdFiltered = commandsList.filter(c => c.label.toLowerCase().includes(lower));
+                cmdIndex = 0;
+
+                if (cmdFiltered.length === 0) {
+                    list.innerHTML = `<div class="px-5 py-2 text-[12px] text-[#858585]">No matching commands</div>`;
+                    return;
+                }
+
+                list.innerHTML = cmdFiltered.map((c, i) => `
+                    <div class="px-3 py-1.5 mx-2 my-0.5 rounded text-[13px] flex items-center gap-3 cursor-pointer ${i === 0 ? 'bg-[#04395e] text-white' : 'text-[#cccccc] hover:bg-[#2a2d2e]'}" 
+                         id="cmd-item-${i}" onmousedown="executeCommand(${i})">
+                        <i data-lucide="${c.icon}" class="w-4 h-4 ${i === 0 ? 'text-white' : 'text-[#cccccc]'}"></i>
+                        ${c.label}
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            }
+
+            function executeCommand(index) {
+                const cmd = cmdFiltered[index];
+                if (cmd && cmd.action) {
+                    toggleCommandPalette();
+                    cmd.action();
+                }
+            }
+
+            window.addEventListener('DOMContentLoaded', () => {
+                const cmdInput = document.getElementById('cmd-input');
+                if (cmdInput) {
+                    cmdInput.addEventListener('input', (e) => {
+                        renderCommands(e.target.value);
+                    });
+                    cmdInput.addEventListener('keydown', (e) => {
+                        const list = document.getElementById('cmd-list');
+                        if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            if (cmdIndex < cmdFiltered.length - 1) {
+                                document.getElementById(`cmd-item-${cmdIndex}`).classList.remove('bg-[#04395e]', 'text-white');
+                                document.querySelector(`#cmd-item-${cmdIndex} i`).classList.remove('text-white');
+                                document.querySelector(`#cmd-item-${cmdIndex} i`).classList.add('text-[#cccccc]');
+
+                                cmdIndex++;
+                                const next = document.getElementById(`cmd-item-${cmdIndex}`);
+                                next.classList.add('bg-[#04395e]', 'text-white');
+                                document.querySelector(`#cmd-item-${cmdIndex} i`).classList.remove('text-[#cccccc]');
+                                document.querySelector(`#cmd-item-${cmdIndex} i`).classList.add('text-white');
+                                next.scrollIntoView({ block: 'nearest' });
+                            }
+                        } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            if (cmdIndex > 0) {
+                                document.getElementById(`cmd-item-${cmdIndex}`).classList.remove('bg-[#04395e]', 'text-white');
+                                document.querySelector(`#cmd-item-${cmdIndex} i`).classList.remove('text-white');
+                                document.querySelector(`#cmd-item-${cmdIndex} i`).classList.add('text-[#cccccc]');
+
+                                cmdIndex--;
+                                const prev = document.getElementById(`cmd-item-${cmdIndex}`);
+                                prev.classList.add('bg-[#04395e]', 'text-white');
+                                document.querySelector(`#cmd-item-${cmdIndex} i`).classList.remove('text-[#cccccc]');
+                                document.querySelector(`#cmd-item-${cmdIndex} i`).classList.add('text-white');
+                                prev.scrollIntoView({ block: 'nearest' });
+                            }
+                        } else if (e.key === 'Enter') {
+                            e.preventDefault();
+                            executeCommand(cmdIndex);
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            toggleCommandPalette();
+                        }
+                    });
+                }
+            });
+
+            // Global Keydown hook
+            window.addEventListener('keydown', e => {
+                if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'p') {
+                    e.preventDefault();
+                    toggleCommandPalette();
+                }
+                if (e.key === 'Escape' && cmdVisible) {
+                    toggleCommandPalette();
+                }
+            });
+
+            // Close context menus or command palette on global click
+            window.addEventListener('click', (e) => {
+                const overlay = document.getElementById('command-palette-overlay');
+                const palette = document.getElementById('command-palette');
+                if (overlay && !overlay.classList.contains('hidden') && palette && !palette.contains(e.target)) {
+                    toggleCommandPalette();
+                }
+
+                const contextMenu = document.getElementById('context-menu');
+                const fileContextMenu = document.getElementById('file-context-menu');
+                const folderContextMenu = document.getElementById('folder-context-menu');
+                if (contextMenu && !contextMenu.classList.contains('hidden') && !contextMenu.contains(e.target)) {
+                    contextMenu.classList.add('hidden');
+                }
+                if (fileContextMenu && !fileContextMenu.classList.contains('hidden') && !fileContextMenu.contains(e.target)) {
+                    fileContextMenu.classList.add('hidden');
+                }
+                if (folderContextMenu && !folderContextMenu.classList.contains('hidden') && !folderContextMenu.contains(e.target)) {
+                    folderContextMenu.classList.add('hidden');
+                }
+            }, true); // Use capture to intercept early
+
+            // --- Settings View Logic ---
+            function openSettingsUI() {
+                const filename = 'Settings';
+                if (!fileSystem[filename]) {
+                    fileSystem[filename] = {
+                        language: 'settings',
+                        lucideIcon: 'settings-2',
+                        iconColor: 'text-[#cccccc]',
+                        content: '',
+                        isSpecial: true
+                    };
+                }
+                switchFile(filename);
+            }
+
+            function renderSettingsView(pane) {
+                const suffix = pane === 'left' ? '-left' : '-right';
+                const ww = document.getElementById('setting-wordwrap' + suffix);
+                const mm = document.getElementById('setting-minimap' + suffix);
+                const fs = document.getElementById('setting-fontsize' + suffix);
+                const cb = document.getElementById('setting-blinking' + suffix);
+
+                if (ww) ww.value = editorSettings.wordWrap || 'off';
+                if (mm) mm.checked = editorSettings.minimap?.enabled ?? true;
+                if (fs) fs.value = editorSettings.fontSize || 14;
+                if (cb) cb.value = editorSettings.cursorBlinking || 'blink';
+            }
+
+            function updateEditorSetting(key, value) {
+                if (key === 'wordWrap') editorSettings.wordWrap = value ? 'on' : 'off';
+                if (key === 'minimap') editorSettings.minimap = { enabled: value };
+                if (key === 'fontSize') editorSettings.fontSize = parseInt(value, 10);
+                if (key === 'cursorBlinking') editorSettings.cursorBlinking = value;
+
+                if (editorInstanceLeft) editorInstanceLeft.updateOptions(editorSettings);
+                if (editorInstanceRight) editorInstanceRight.updateOptions(editorSettings);
+                saveState();
+                renderSettingsView('left');
+                renderSettingsView('right');
+            }
         </script>
 
         <!-- File Context Menu -->
-        <div id="file-context-menu" class="hidden absolute z-[1000] bg-[#252526] border border-[#454545] rounded shadow-[0_4px_10px_rgba(0,0,0,0.5)] text-[#cccccc] text-[12px] min-w-[220px] py-1 select-none">
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleContextMenuAction('openSide')">
+        <div id="file-context-menu"
+            class="hidden absolute z-[1000] bg-[#252526] border border-[#454545] rounded shadow-[0_4px_10px_rgba(0,0,0,0.5)] text-[#cccccc] text-[12px] min-w-[220px] py-1 select-none">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleContextMenuAction('openSide')">
                 <span>Open to the Side</span><span class="text-[#858585] text-[10px] ml-4">Ctrl+Enter</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer" onclick="handleContextMenuAction('openWith')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer"
+                onclick="handleContextMenuAction('openWith')">
                 <span>Open With...</span>
             </div>
             <div class="h-[1px] bg-[#454545] my-1 mx-2"></div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer" onclick="handleContextMenuAction('selectCompare')" id="ctx-select-compare">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer"
+                onclick="handleContextMenuAction('selectCompare')" id="ctx-select-compare">
                 <span>Select for Compare</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer hidden" onclick="handleContextMenuAction('compareWith')" id="ctx-compare-with">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer hidden"
+                onclick="handleContextMenuAction('compareWith')" id="ctx-compare-with">
                 <span>Compare with Selected</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer" onclick="handleContextMenuAction('timeline')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer"
+                onclick="handleContextMenuAction('timeline')">
                 <span>Open Timeline</span>
             </div>
             <div class="h-[1px] bg-[#454545] my-1 mx-2"></div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleContextMenuAction('cut')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleContextMenuAction('cut')">
                 <span>Cut</span><span class="text-[#858585] text-[10px] ml-4">Ctrl+X</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleContextMenuAction('copy')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleContextMenuAction('copy')">
                 <span>Copy</span><span class="text-[#858585] text-[10px] ml-4">Ctrl+C</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleContextMenuAction('download')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleContextMenuAction('download')">
                 <span>Download...</span>
             </div>
             <div class="h-[1px] bg-[#454545] my-1 mx-2"></div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleContextMenuAction('copyPath')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleContextMenuAction('copyPath')">
                 <span>Copy Path</span><span class="text-[#858585] text-[10px] ml-4">Shift+Alt+C</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleContextMenuAction('copyRelativePath')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleContextMenuAction('copyRelativePath')">
                 <span>Copy Relative Path</span><span class="text-[#858585] text-[10px] ml-4">Ctrl+Shift+C</span>
             </div>
             <div class="h-[1px] bg-[#454545] my-1 mx-2"></div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleContextMenuAction('rename')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleContextMenuAction('rename')">
                 <span>Rename...</span><span class="text-[#858585] text-[10px] ml-4">F2</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center text-[#f48771]" onclick="handleContextMenuAction('delete')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center text-[#f48771]"
+                onclick="handleContextMenuAction('delete')">
                 <span>Delete Permanently</span><span class="text-[#858585] text-[10px] ml-4">Del</span>
             </div>
         </div>
 
         <!-- Folder Context Menu -->
-        <div id="folder-context-menu" class="hidden absolute z-[1000] bg-[#252526] border border-[#454545] rounded shadow-[0_4px_10px_rgba(0,0,0,0.5)] text-[#cccccc] text-[12px] min-w-[220px] py-1 select-none">
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer" onclick="handleFolderContextMenuAction('newFile')">
+        <div id="folder-context-menu"
+            class="hidden absolute z-[1000] bg-[#252526] border border-[#454545] rounded shadow-[0_4px_10px_rgba(0,0,0,0.5)] text-[#cccccc] text-[12px] min-w-[220px] py-1 select-none">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer"
+                onclick="handleFolderContextMenuAction('newFile')">
                 <span>New File...</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer" onclick="handleFolderContextMenuAction('newFolder')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer"
+                onclick="handleFolderContextMenuAction('newFolder')">
                 <span>New Folder...</span>
             </div>
             <div class="h-[1px] bg-[#454545] my-1 mx-2"></div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleFolderContextMenuAction('copyPath')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleFolderContextMenuAction('copyPath')">
                 <span>Copy Path</span><span class="text-[#858585] text-[10px] ml-4">Shift+Alt+C</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleFolderContextMenuAction('copyRelativePath')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleFolderContextMenuAction('copyRelativePath')">
                 <span>Copy Relative Path</span><span class="text-[#858585] text-[10px] ml-4">Ctrl+Shift+C</span>
             </div>
             <div class="h-[1px] bg-[#454545] my-1 mx-2"></div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center" onclick="handleFolderContextMenuAction('rename')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center"
+                onclick="handleFolderContextMenuAction('rename')">
                 <span>Rename...</span><span class="text-[#858585] text-[10px] ml-4">F2</span>
             </div>
-            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center text-[#f48771]" onclick="handleFolderContextMenuAction('delete')">
+            <div class="px-6 py-1 hover:bg-[#04395e] hover:text-white cursor-pointer flex justify-between items-center text-[#f48771]"
+                onclick="handleFolderContextMenuAction('delete')">
                 <span>Delete Permanently</span><span class="text-[#858585] text-[10px] ml-4">Del</span>
+            </div>
+        </div>
+
+        <!-- Command Palette -->
+        <div id="command-palette-overlay"
+            class="hidden fixed inset-0 z-[2000] flex justify-center items-start pt-32 pointer-events-none">
+            <div id="command-palette"
+                class="bg-[#252526] w-[600px] rounded-md shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-[#454545] flex flex-col pointer-events-auto">
+                <div class="p-1 border-b border-[#454545] flex items-center bg-[#252526] rounded-t-md">
+                    <span class="pl-3 text-[#cccccc] opacity-70">&gt;</span>
+                    <input type="text" id="cmd-input" autocomplete="off"
+                        class="w-full bg-transparent text-[#cccccc] p-2 outline-none text-[13px]"
+                        placeholder="Type a command or search...">
+                </div>
+                <div id="cmd-list" class="max-h-[300px] overflow-y-auto py-1">
+                    <!-- Command items go here -->
+                </div>
             </div>
         </div>
 </body>
